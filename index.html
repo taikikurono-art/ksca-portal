@@ -45,7 +45,7 @@ input:focus{border-color:#1D9E75;}
 .i-val{font-size:14px;font-weight:500;}
 .i-val.sm{font-size:13px;font-weight:400;line-height:1.5;}
 .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;margin-right:4px;margin-bottom:4px;}
-.tag-hop{background:#E1F5EE;color:#085041;}
+.tag-hop{background:#FBEAF0;color:#993356;}
 .tag-soar{background:#E6F1FB;color:#0C447C;}
 .tag-only{background:#FAEEDA;color:#412402;}
 .checklist{list-style:none;}
@@ -67,7 +67,7 @@ input:focus{border-color:#1D9E75;}
 .child-att-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#f9f9f7;cursor:pointer;user-select:none;}
 .child-att-header-left{display:flex;align-items:center;gap:8px;}
 .child-badge{font-size:12px;font-weight:500;padding:3px 10px;border-radius:20px;}
-.badge-hop{background:#E1F5EE;color:#085041;}
+.badge-hop{background:#FBEAF0;color:#993356;}
 .badge-soar{background:#E6F1FB;color:#0C447C;}
 .badge-none{background:#F1EFE8;color:#5F5E5A;}
 .child-att-name{font-size:13px;font-weight:500;}
@@ -81,7 +81,7 @@ input:focus{border-color:#1D9E75;}
 .type-option{flex:1;}
 .type-option input[type=radio]{position:absolute;opacity:0;width:0;height:0;}
 .type-label{display:block;text-align:center;padding:8px 0;font-size:12px;font-weight:500;border:2px solid #D3D1C7;border-radius:8px;background:#F1EFE8;color:#5F5E5A;cursor:pointer;user-select:none;transition:all .15s;}
-.type-option input[type=radio]:checked+.type-label.hop-type{background:#1D9E75!important;border-color:#1D9E75!important;color:#fff!important;}
+.type-option input[type=radio]:checked+.type-label.hop-type{background:#D4537E!important;border-color:#D4537E!important;color:#fff!important;}
 .type-option input[type=radio]:checked+.type-label.soar-type{background:#185FA5!important;border-color:#185FA5!important;color:#fff!important;}
 
 /* 出欠ラジオ */
@@ -233,7 +233,7 @@ var MONTHS=[{m:4,e:"🌸",l:"4月"},{m:5,e:"🍜",l:"5月"},{m:6,e:"🍳",l:"6�
 var BASE_ITEMS=["動きやすい服装","タオル・着替え","水筒（500ml以上）","昼食・おやつ","レインウェア","帽子・日焼け止め"];
 var ACTS={
   4:{
-    meetTime:"08:40",dissolveTime:"15:00",fee:"6,500円",transport:"500円（実費）",
+    meetTime:"08:40",dissolveTime:"15:00",fee:"6,500円",transport:"¥440（実費）",
     hop:"「おいしいたからさがし」— 公園内に隠されたポイントをグループで探して、おいしいお宝を見つけよう！",
     soar:"「タープを立てよう」— 自分たちの力でタープを張る。グループの団結力が成功のカギ！",
     clothes:"動きやすく、汚れても良い服／履き慣れたスニーカー／帽子",
@@ -377,15 +377,19 @@ function renderContent(){
     return;
   }
   var dateStr=(DATES[session.classId]&&DATES[session.classId][currentM])||"—";
+  var meetTime=act.meetTime||cls.time;
+  var dissolveTime=act.dissolveTime||cls.end;
+  var fee=act.fee||"7,000円";
+  var transport=act.transport||"電車でフィールドへ移動（往復実費）";
   var html="";
 
   html+='<div class="card"><div class="step-header"><div class="step-num">1</div><div class="step-title">基本情報</div></div><div class="step-body"><div class="info-grid">';
   html+='<div><div class="i-label">開催日</div><div class="i-val sm">'+dateStr+'（'+(cls.hasSoar?"日":"土")+'）</div></div>';
-  html+='<div><div class="i-label">集合時間</div><div class="i-val">'+cls.time+'</div></div>';
+  html+='<div><div class="i-label">集合時間</div><div class="i-val">'+meetTime+'</div></div>';
   html+='<div style="grid-column:1/-1"><div class="i-label">集合・解散場所</div><div class="i-val sm">'+cls.spot+'</div></div>';
-  html+='<div><div class="i-label">解散時間</div><div class="i-val">'+cls.end+'</div></div>';
-  html+='<div><div class="i-label">参加費</div><div class="i-val sm">7,000円（兄弟割・教室割あり）</div></div>';
-  html+='<div style="grid-column:1/-1"><div class="i-label">交通費</div><div class="i-val sm">電車でフィールドへ移動（往復実費）</div></div>';
+  html+='<div><div class="i-label">解散時間</div><div class="i-val">'+dissolveTime+'</div></div>';
+  html+='<div><div class="i-label">参加費</div><div class="i-val sm">'+fee+'（兄弟割・教室割あり）</div></div>';
+  html+='<div style="grid-column:1/-1"><div class="i-label">交通費</div><div class="i-val sm">'+transport+'</div></div>';
   html+='</div></div></div>';
 
   html+='<div class="card"><div class="step-header"><div class="step-num">2</div><div class="step-title">活動内容</div></div><div class="step-body">';
@@ -406,11 +410,7 @@ function renderContent(){
   }
   html+='</div></div>';
 
-  html+='<div class="card"><div class="step-header"><div class="step-num">5</div><div class="step-title">1日の流れ</div></div><div class="step-body"><div class="flow-steps">';
-  act.flow.forEach(function(f){html+='<div class="flow-item"><div class="fl"><div class="fd"></div><div class="fli"></div></div><div class="ftime">'+f.t+'</div><div class="fdesc">'+f.d+'</div></div>';});
-  html+='</div></div></div>';
-
-  html+='<div class="card"><div class="step-header"><div class="step-num">6</div><div class="step-title">出欠の回答</div></div><div class="step-body"><div id="attSection"></div><div class="att-note">回答後もこのページから変更できます</div></div></div>';
+  html+='<div class="card"><div class="step-header"><div class="step-num">5</div><div class="step-title">出欠の回答</div></div><div class="step-body"><div id="attSection"></div><div class="att-note">回答後もこのページから変更できます</div></div></div>';
   document.getElementById("content").innerHTML=html;
   renderAttSection();
 }
