@@ -232,11 +232,19 @@ var CLS={
 var MONTHS=[{m:4,e:"🌸",l:"4月"},{m:5,e:"🍜",l:"5月"},{m:6,e:"🍳",l:"6月"},{m:7,e:"🚌",l:"7月"},{m:9,e:"💧",l:"9月"},{m:10,e:"🍂",l:"10月"},{m:11,e:"🔥",l:"11月"},{m:12,e:"🚋",l:"12月"},{m:1,e:"⛺",l:"1月"},{m:2,e:"🎯",l:"2月"},{m:3,e:"🌕",l:"3月"}];
 var BASE_ITEMS=["動きやすい服装","タオル・着替え","水筒（500ml以上）","昼食・おやつ","レインウェア","帽子・日焼け止め"];
 var ACTS={
-  4:{hop:"「宝探し」— 公園内に隠されたポイントをグループで探しておいしいお宝を見つけよう！",soar:"「タープ張りにチャレンジ」— 自分たちの力でタープを張る。グループの団結力が成功のカギ！",flow:[{t:"08:45",d:"集合・出発"},{t:"09:30",d:"フィールド到着・グループ別活動開始"},{t:"12:00",d:"昼食"},{t:"13:00",d:"午後の活動"},{t:"15:30",d:"振り返り・片付け"},{t:"16:00",d:"解散"}]},
-  5:{hop:"「流しそうめん」（親子イベント）— 水遊びも楽しみながら親子で過ごします。",soar:"「流しそうめん」（親子イベント）— 毎年恒例！親子で参加できます。",flow:[{t:"08:45",d:"集合・出発"},{t:"09:30",d:"フィールド到着・準備"},{t:"10:30",d:"流しそうめん・水遊び"},{t:"12:30",d:"昼食"},{t:"14:00",d:"自由活動・片付け"},{t:"16:00",d:"解散"}]},
-  6:{hop:"「簡単おかずづくり」— カセットコンロで調理。野菜を洗う・切る・焼くをグループで分担！",soar:"「2人組炊飯チャレンジ」— 上級生と下級生のペアで飯盒炊飯。ホップのご飯も用意する責任感ある活動。",flow:[{t:"08:45",d:"集合・出発"},{t:"09:30",d:"フィールド到着・食材準備"},{t:"10:30",d:"クッキング開始"},{t:"12:00",d:"みんなで食べよう！"},{t:"13:30",d:"片付け・振り返り"},{t:"16:00",d:"解散"}]}
+  4:{
+    meetTime:"08:40",dissolveTime:"15:00",fee:"6,500円",transport:"500円（実費）",
+    hop:"「おいしいたからさがし」— 公園内に隠されたポイントをグループで探して、おいしいお宝を見つけよう！",
+    soar:"「タープを立てよう」— 自分たちの力でタープを張る。グループの団結力が成功のカギ！",
+    clothes:"動きやすく、汚れても良い服／履き慣れたスニーカー／帽子",
+    items:["マナカ","水分","お弁当","レジャーシート","ハンカチ・ティッシュ","ゴミ袋","着替え（必要な方）","活動ファイル","雨の日はレインコートと長靴"],
+    flow:[{t:"08:40",d:"集合・出発"},{t:"09:30",d:"フィールド到着・グループ別活動開始"},{t:"12:00",d:"昼食"},{t:"13:00",d:"午後の活動"},{t:"14:30",d:"振り返り・片付け"},{t:"15:00",d:"解散"}]
+  }
 };
-var DATES={4:"2026年4月19日",5:"2026年5月17日",6:"2026年6月21日"};
+var DATES={
+  kanayama:{4:"2026年4月19日",5:"2026年5月17日",6:"2026年6月14日",7:"2026年7月12日",9:"2026年9月27日",10:"2026年10月18日",11:"2026年11月29日",12:"2026年12月13日",1:"2027年1月17日",2:"2027年2月14日",3:"2027年3月27・28日"},
+  ozone:   {4:"2026年4月25日",5:"2026年5月30日",6:"2026年6月20日",7:"2026年7月25日",9:"2026年9月26日",10:"2026年10月17日",11:"2026年11月28日",12:"2026年12月19日",1:"2027年1月23日",2:"2027年2月20日",3:"2027年3月27・28日"}
+};
 var MAX_SIBLINGS=3;
 
 var session={mode:"",classId:"",name:""};
@@ -368,7 +376,7 @@ function renderContent(){
     document.getElementById("content").innerHTML='<div class="card"><div class="future-card"><div style="font-size:30px;margin-bottom:8px;">'+mo.e+'</div><div style="font-size:15px;font-weight:500;margin-bottom:6px;">'+mo.l+'の活動情報</div><div style="font-size:13px;color:#888780;">活動の2週間前にLINEでお知らせ後、こちらも更新されます。</div></div></div>';
     return;
   }
-  var dateStr=DATES[currentM]||"—";
+  var dateStr=(DATES[session.classId]&&DATES[session.classId][currentM])||"—";
   var html="";
 
   html+='<div class="card"><div class="step-header"><div class="step-num">1</div><div class="step-title">基本情報</div></div><div class="step-body"><div class="info-grid">';
@@ -386,15 +394,23 @@ function renderContent(){
   if(cls.hasSoar){html+='<div><span class="tag tag-soar">SOAR（中〜高学年）</span><div style="font-size:13px;line-height:1.6;margin-top:6px;">'+act.soar+'</div></div>';}
   html+='</div></div>';
 
+  var itemList=act.items||BASE_ITEMS;
   html+='<div class="card"><div class="step-header"><div class="step-num">3</div><div class="step-title">持ち物</div></div><div class="step-body"><ul class="checklist">';
-  BASE_ITEMS.forEach(function(i){html+='<li><span class="chk">✓</span>'+i+'</li>';});
+  itemList.forEach(function(i){html+='<li><span class="chk">✓</span>'+i+'</li>';});
   html+='</ul></div></div>';
+  html+='<div class="card"><div class="step-header"><div class="step-num">4</div><div class="step-title">服装</div></div><div class="step-body">';
+  if(act.clothes){
+    html+='<div style="font-size:13px;line-height:1.8;">'+act.clothes+'</div>';
+  } else {
+    html+='<div style="font-size:13px;color:#888780;">活動の2週間前にLINEでお知らせ後、こちらも更新されます。</div>';
+  }
+  html+='</div></div>';
 
-  html+='<div class="card"><div class="step-header"><div class="step-num">4</div><div class="step-title">1日の流れ</div></div><div class="step-body"><div class="flow-steps">';
+  html+='<div class="card"><div class="step-header"><div class="step-num">5</div><div class="step-title">1日の流れ</div></div><div class="step-body"><div class="flow-steps">';
   act.flow.forEach(function(f){html+='<div class="flow-item"><div class="fl"><div class="fd"></div><div class="fli"></div></div><div class="ftime">'+f.t+'</div><div class="fdesc">'+f.d+'</div></div>';});
   html+='</div></div></div>';
 
-  html+='<div class="card"><div class="step-header"><div class="step-num">5</div><div class="step-title">出欠の回答</div></div><div class="step-body"><div id="attSection"></div><div class="att-note">回答後もこのページから変更できます</div></div></div>';
+  html+='<div class="card"><div class="step-header"><div class="step-num">6</div><div class="step-title">出欠の回答</div></div><div class="step-body"><div id="attSection"></div><div class="att-note">回答後もこのページから変更できます</div></div></div>';
   document.getElementById("content").innerHTML=html;
   renderAttSection();
 }
