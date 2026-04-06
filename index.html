@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KSCA 活動案内ポータル</title>
+<title>KSCA 保護者ページ</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#2c2c2a;min-height:100vh;}
@@ -142,7 +142,7 @@ input:focus{border-color:#1D9E75;}
   <div class="login-card">
     <div class="logo-mark">
       <div class="lt">KSCA</div>
-      <p>保護者専用 活動案内ポータル</p>
+      <p>保護者ページ</p>
     </div>
     <div class="field-wrap">
       <span class="f-label">参加クラスを選択してください</span>
@@ -190,7 +190,7 @@ input:focus{border-color:#1D9E75;}
 <div id="portalWrap" class="hidden">
   <div class="top-bar">
     <div>
-      <div class="site-name">KSCA 活動案内</div>
+      <div class="site-name">KSCA 保護者ページ</div>
       <div class="user-sub" id="userLabel"></div>
     </div>
     <button class="logout-btn" onclick="doLogout()">ログアウト</button>
@@ -220,6 +220,9 @@ input:focus{border-color:#1D9E75;}
 
 </div>
 <script>
+function normalizeName(val){
+  return val.replace(/\u3000/g," ").replace(/\s+/g,"").trim();
+}
 var GAS_URL="https://script.google.com/macros/s/AKfycbzr7XAnUG-AOwiAl85sfOMB_SB_IiG4lILo3SrqLUDQInqiBhQkR0r1f9K59OowN7Oj/exec";
 var PW={kanayama:"ksca2026",ozone:"ozone2026",admin:"ksca_admin"};
 var CLS={
@@ -270,7 +273,7 @@ function showAdminLogin(){document.getElementById("loginWrap").classList.add("hi
 function showUserLogin(){document.getElementById("adminLoginWrap").classList.add("hidden");document.getElementById("loginWrap").classList.remove("hidden");}
 
 function doLogin(){
-  var name=document.getElementById("nameInput").value.trim();
+  var name=normalizeName(document.getElementById("nameInput").value);
   var pw=document.getElementById("pwInput").value;
   var cls=getSelClass();
   if(!name){document.getElementById("nameInput").focus();return;}
@@ -343,7 +346,7 @@ function removeSibling(idx){
   renderAttSection();
 }
 
-function updateChildName(idx,val){children[idx].name=val;}
+function updateChildName(idx,val){children[idx].name=normalizeName(val);}
 function updateChildType(idx,val){children[idx].type=val;renderAttSection();}
 
 function renderTabs(){
