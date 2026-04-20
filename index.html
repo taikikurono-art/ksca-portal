@@ -121,6 +121,13 @@ input:focus{border-color:#1D9E75;}
 .check-box.checked{background:#1D9E75;border-color:#1D9E75;}
 .check-box.checked::after{content:"";display:block;width:5px;height:9px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(45deg) translate(-1px,-1px);}
 .checklist-reset{font-size:11px;color:#888780;background:none;border:none;cursor:pointer;text-decoration:underline;margin-top:8px;display:block;}
+.parent-att-card{background:#f0f8ff;border:1px solid #b5d4f4;border-radius:10px;padding:12px 14px;margin-top:10px;}
+.parent-att-title{font-size:12px;font-weight:500;color:#185FA5;margin-bottom:10px;}
+.parent-radio-group{display:flex;flex-direction:column;gap:6px;}
+.parent-option{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.parent-option input[type=radio]{width:16px;height:16px;accent-color:#185FA5;cursor:pointer;}
+.parent-option-label{font-size:13px;color:#2c2c2a;}
+.parent-fee-note{font-size:12px;color:#185FA5;background:#E6F1FB;border-radius:6px;padding:6px 10px;margin-top:8px;}
 .admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
 .admin-title{font-size:16px;font-weight:500;}
 .admin-filter{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;}
@@ -403,10 +410,14 @@ async function loadUserData(){
   var data=await gasGet();
   if(!data||!Array.isArray(data))return;
   data.forEach(function(r){
-    // 同じクラスのデータを回答済みとして読み込む（兄弟自動追加はしない）
     if(r.classId===session.classId){
-      var key=r.classId+"|"+r.name+"|"+r.month+"|"+r.type;
-      attStore[key]={answer:r.answer,reason:r.reason||"",submitted:true,name:r.name,classId:r.classId,month:Number(r.month),type:r.type};
+      if(r.type==="parent"){
+        var pKey="parent_"+r.classId+"_"+r.name+"_"+r.month;
+        parentStore[pKey]={attend:r.answer,submitted:true};
+      } else {
+        var key=r.classId+"|"+r.name+"|"+r.month+"|"+r.type;
+        attStore[key]={answer:r.answer,reason:r.reason||"",submitted:true,name:r.name,classId:r.classId,month:Number(r.month),type:r.type};
+      }
     }
   });
   renderContent();
@@ -772,6 +783,41 @@ function renderAttSection(){
   html+='</div>';
 
   sec.innerHTML=html;
+
+  // 5月の場合は保護者参加欄を追加
+  if(currentM===5){
+    var parentCard=document.createElement("div");
+    parentCard.className="parent-att-card";
+    var pKey="parent_"+session.classId+"_"+session.name+"_5";
+    var pAtt=parentStore[pKey]||{};
+    var pSubmitted=pAtt.submitted;
+
+    var pHtml='<div class="parent-att-title">👨‍👩‍👧 保護者の参加について</div>';
+    if(pSubmitted){
+      var pLabel=pAtt.attend==="none"?"子どものみ参加":pAtt.attend==="together"?"保護者も参加（集合から一緒）":"保護者も参加（現地集合）";
+      var pFee=pAtt.attend==="none"?"参加費：6,000円":"参加費：5,000円（−1,000円）";
+      pHtml+='<div style="background:#E1F5EE;border-radius:8px;padding:10px 12px;font-size:13px;color:#0F6E56;">';
+      pHtml+='<div style="font-weight:500;">✓ '+pLabel+'</div>';
+      pHtml+='<div style="font-size:12px;margin-top:4px;">'+pFee+'</div>';
+      pHtml+='<button onclick="resetParent(''+pKey+'')" style="font-size:11px;background:none;border:none;color:#888780;cursor:pointer;text-decoration:underline;margin-top:6px;display:block;">変更する</button>';
+      pHtml+='</div>';
+    } else {
+      var chkNone=pAtt.attend==="none"?"checked":"";
+      var chkTogether=pAtt.attend==="together"?"checked":"";
+      var chkLocal=pAtt.attend==="local"?"checked":"";
+      pHtml+='<div class="parent-radio-group">';
+      pHtml+='<label class="parent-option"><input type="radio" name="parentAtt" value="none" '+chkNone+' onchange="onParentChange(''+pKey+'','none')"><span class="parent-option-label">子どものみ参加　<span style="font-size:11px;color:#888780;">参加費：6,000円</span></span></label>';
+      pHtml+='<label class="parent-option"><input type="radio" name="parentAtt" value="together" '+chkTogether+' onchange="onParentChange(''+pKey+'','together')"><span class="parent-option-label">保護者も参加（集合から一緒）　<span style="font-size:11px;color:#185FA5;">参加費：5,000円</span></span></label>';
+      pHtml+='<label class="parent-option"><input type="radio" name="parentAtt" value="local" '+chkLocal+' onchange="onParentChange(''+pKey+'','local')"><span class="parent-option-label">保護者も参加（現地集合）　<span style="font-size:11px;color:#185FA5;">参加費：5,000円</span></span></label>';
+      pHtml+='</div>';
+      pHtml+='<div id="parentSubmitArea" style="'+(pAtt.attend?'':'display:none;')+'">';
+      pHtml+='<button onclick="submitParent(''+pKey+'')" style="width:100%;padding:10px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;margin-top:10px;">保護者参加を送信する</button>';
+      pHtml+='<div id="parentSaving" class="saving-indicator"></div>';
+      pHtml+='</div>';
+    }
+    parentCard.innerHTML=pHtml;
+    sec.appendChild(parentCard);
+  }
 }
 
 function onAttChange(idx,val){
@@ -812,7 +858,44 @@ async function submitAtt(idx){
 
 function resetAtt(key){if(attStore[key])attStore[key].submitted=false;renderAttSection();}
 
+function onParentChange(pKey,val){
+  if(!parentStore[pKey])parentStore[pKey]={};
+  parentStore[pKey].attend=val;
+  parentStore[pKey].submitted=false;
+  var area=document.getElementById("parentSubmitArea");
+  if(area)area.style.display="block";
+}
+
+async function submitParent(pKey){
+  var p=parentStore[pKey];
+  if(!p||!p.attend)return;
+  var sb=document.querySelector(".parent-att-card button[onclick*='submitParent']");
+  var si=document.getElementById("parentSaving");
+  if(sb)sb.disabled=true;
+  if(si)si.innerHTML='<span class="spin"></span>保存中...';
+  var attendLabel=p.attend==="none"?"子どものみ参加":p.attend==="together"?"保護者も参加（集合から一緒）":"保護者も参加（現地集合）";
+  var fee=p.attend==="none"?"6000":"5000";
+  var result=await gasPost({
+    name:session.name,classId:session.classId,classLabel:CLS[session.classId].label,
+    type:"parent",month:5,
+    answer:attendLabel,reason:"参加費："+fee+"円"
+  });
+  if(result&&(result.status==="created"||result.status==="updated")){
+    parentStore[pKey].submitted=true;
+    renderAttSection();
+  } else {
+    if(si)si.innerHTML='<span style="color:#A32D2D;">保存に失敗しました。</span>';
+    if(sb)sb.disabled=false;
+  }
+}
+
+function resetParent(pKey){
+  if(parentStore[pKey])parentStore[pKey].submitted=false;
+  renderAttSection();
+}
+
 var adminRoster=[];
+var parentStore={};// 保護者参加回答 {key: {attend, join}}
 
 async function loadAdminData(){
   var st=document.getElementById("adminStatus");
