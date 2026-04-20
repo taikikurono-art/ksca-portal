@@ -195,6 +195,7 @@ input:focus{border-color:#1D9E75;}
     </div>
     <button class="logout-btn" onclick="doLogout()">ログアウト</button>
   </div>
+  <div style="font-size:11px;color:#888780;text-align:right;margin-bottom:8px;">最終更新：<span id="lastUpdated"></span></div>
   <div class="tab-scroll"><div class="tab-row" id="tabRow"></div></div>
   <div id="content"></div>
 </div>
@@ -223,6 +224,7 @@ input:focus{border-color:#1D9E75;}
 function normalizeName(val){
   return val.replace(/\u3000/g," ").replace(/\s+/g,"").trim();
 }
+var LAST_UPDATED="2026年4月20日";
 var GAS_URL="https://script.google.com/macros/s/AKfycbzr7XAnUG-AOwiAl85sfOMB_SB_IiG4lILo3SrqLUDQInqiBhQkR0r1f9K59OowN7Oj/exec";
 var PW={kanayama:"ksca2026",ozone:"ozone2026",admin:"ksca_admin"};
 var CLS={
@@ -278,6 +280,18 @@ async function gasGet(month){
   }catch(e){return null;}
 }
 
+function initFromStorage(){
+  try{
+    var savedName=localStorage.getItem("ksca_name");
+    var savedCls=localStorage.getItem("ksca_cls");
+    if(savedName){document.getElementById("nameInput").value=savedName;}
+    if(savedCls){
+      document.querySelectorAll('input[name="cls"]').forEach(function(r){
+        r.checked=(r.value===savedCls);
+      });
+    }
+  }catch(e){}
+}
 function getSelClass(){
   var r=document.querySelector('input[name="cls"]:checked');
   return r?r.value:"kanayama";
@@ -299,6 +313,8 @@ function doLogin(){
   document.getElementById("portalWrap").classList.remove("hidden");
   document.getElementById("userLabel").textContent=CLS[cls].label+"　"+name+" さん";
   currentM=4;
+  var luEl=document.getElementById("lastUpdated");
+  if(luEl)luEl.textContent=LAST_UPDATED;
   renderTabs();renderContent();
   loadUserData();
 }
@@ -362,18 +378,100 @@ function removeSibling(idx){
 function updateChildName(idx,val){children[idx].name=normalizeName(val);}
 function updateChildType(idx,val){children[idx].type=val;renderAttSection();}
 
+function getTabDate(m){
+  var d=DATES[session.classId]&&DATES[session.classId][m];
+  if(!d)return "";
+  // "2026年4月19日" → "4/19" のように短縮
+  var match=d.match(/(\d+)月(\d+)/);
+  return match?" "+match[1]+"/"+match[2]:"";
+}
+// 初期化
+try{initFromStorage();}catch(e){}
+
 function renderTabs(){
   var row=document.getElementById("tabRow");row.innerHTML="";
+  // 年間一覧タブを先頭に追加
+  var allBtn=document.createElement("button");
+  allBtn.className="tab-btn"+(currentM==="all"?" active":"");
+  allBtn.textContent="📅 年間日程";
+  allBtn.onclick=function(){currentM="all";renderTabs();renderContent();};
+  row.appendChild(allBtn);
   MONTHS.forEach(function(mo){
     var btn=document.createElement("button");
     btn.className="tab-btn"+(mo.m===currentM?" active":"");
-    btn.textContent=mo.e+" "+mo.l;
+    btn.textContent=mo.e+" "+mo.l+getTabDate(mo.m);
     btn.onclick=(function(m){return function(){currentM=m;renderTabs();renderContent();};})(mo.m);
     row.appendChild(btn);
   });
 }
 
+function renderSchedule(){
+  var cls=CLS[session.classId];
+  var dates=DATES[session.classId]||{};
+  // 曜日は実際の日付から計算済み
+  var dayNames;
+  if(session.classId==="ozone"){
+    dayNames={4:"土",5:"土",6:"土",7:"土",9:"土",10:"土",11:"土",12:"土",1:"土",2:"土",3:"土"};
+  } else {
+    dayNames={4:"日",5:"日",6:"日",7:"日",9:"日",10:"日",11:"日",12:"日",1:"日",2:"日",3:"土"};
+  }
+  var today=new Date();
+  var html='<div class="card"><div class="step-header"><div class="step-num" style="background:#E1F5EE;color:#0F6E56;">📅</div><div class="step-title">2026年度 年間活動日</div></div><div class="step-body">';
+  html+='<div style="font-size:12px;color:#888780;margin-bottom:12px;">'+cls.label+'の年間スケジュールです</div>';
+  html+='<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+  html+='<thead><tr style="border-bottom:1.5px solid rgba(0,0,0,0.15);">';
+  html+='<th style="text-align:left;padding:8px 6px;font-size:11px;color:#888780;font-weight:500;text-transform:uppercase;letter-spacing:.04em;">月</th>';
+  html+='<th style="text-align:left;padding:8px 6px;font-size:11px;color:#888780;font-weight:500;text-transform:uppercase;letter-spacing:.04em;">日付</th>';
+  html+='<th style="text-align:left;padding:8px 6px;font-size:11px;color:#888780;font-weight:500;text-transform:uppercase;letter-spacing:.04em;">曜日</th>';
+  html+='<th style="text-align:left;padding:8px 6px;font-size:11px;color:#888780;font-weight:500;text-transform:uppercase;letter-spacing:.04em;">状態</th>';
+  html+='</tr></thead><tbody>';
+  var monthEmoji={4:"🌸",5:"🍜",6:"🍳",7:"🚌",9:"💧",10:"🍂",11:"🔥",12:"🚋",1:"⛺",2:"🎯",3:"🌕"};
+  var monthNames={4:"4月",5:"5月",6:"6月",7:"7月",9:"9月",10:"10月",11:"11月",12:"12月",1:"1月",2:"2月",3:"3月"};
+  var monthOrder=[4,5,6,7,9,10,11,12,1,2,3];
+  monthOrder.forEach(function(m){
+    var dateStr=dates[m]||"—";
+    var hasDetail=!!ACTS[m];
+    var isPast=false;
+    if(dates[m]){
+      var parts=dates[m].match(/(\d+)年(\d+)月(\d+)日/);
+      if(parts){
+        var d=new Date(parseInt(parts[1]),parseInt(parts[2])-1,parseInt(parts[3]));
+        isPast=d<today;
+      }
+    }
+    var statusHtml="";
+    if(isPast){
+      statusHtml='<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#888780;font-weight:500;">終了</span>';
+    } else if(hasDetail){
+      statusHtml='<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#E1F5EE;color:#085041;font-weight:500;">案内あり</span>';
+    } else {
+      statusHtml='<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#888780;font-weight:500;">案内待ち</span>';
+    }
+    // 日付だけ短縮表示
+    var shortDate=dateStr.replace(/\d+年/,"");
+    var weekday=dayNames[m]||"";
+    var isCamp=(m===3);
+    html+='<tr style="border-bottom:0.5px solid rgba(0,0,0,0.08);'+(isPast?'opacity:0.5;':'')+'">';
+    html+='<td style="padding:10px 6px;font-weight:500;">'+monthEmoji[m]+" "+monthNames[m]+'</td>';
+    html+='<td style="padding:10px 6px;">'+shortDate+(isCamp?' <span style="font-size:10px;color:#BA7517;">2日間</span>':'')+'</td>';
+    html+='<td style="padding:10px 6px;color:#888780;">（'+weekday+'）</td>';
+    html+='<td style="padding:10px 6px;">'+statusHtml+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div style="margin-top:16px;padding:10px 12px;background:#f9f9f7;border-radius:8px;font-size:12px;color:#888780;line-height:1.7;">';
+  html+='<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#E1F5EE;color:#085041;font-weight:500;">案内あり</span> 活動内容・持ち物などを確認できます<br>';
+  html+='<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#888780;font-weight:500;">案内待ち</span> 2週間前にLINEでお知らせします';
+  html+='</div>';
+  html+='</div></div>';
+  document.getElementById("content").innerHTML=html;
+}
+
 function renderContent(){
+  if(currentM==="all"){
+    renderSchedule();
+    return;
+  }
   var act=ACTS[currentM];
   var cls=CLS[session.classId];
   if(!act){
@@ -388,6 +486,23 @@ function renderContent(){
   var fee=clsAct.fee||"7,000円";
   var transport=clsAct.transport||"電車でフィールドへ移動（往復実費）";
   var html="";
+
+  // 要点カード
+  var cardDate=(DATES[session.classId]&&DATES[session.classId][currentM])||"—";
+  var cardDate2=cardDate.replace(/\d+年/,"");
+  var cardMeet=clsAct.meetTime||cls.time;
+  var cardEnd=clsAct.dissolveTime||cls.end;
+  var cardItems=act.items||BASE_ITEMS;
+  var top3=cardItems.slice(0,3).join("・");
+  html+='<div style="background:linear-gradient(135deg,#f0faf5,#e8f5f0);border:1px solid #b2ddc9;border-radius:12px;padding:14px 16px;margin-bottom:12px;">';
+  html+='<div style="font-size:11px;color:#0F6E56;font-weight:500;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">📋 当日の要点</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;">';
+  html+='<div><span style="font-size:10px;color:#888780;">📅 開催日</span><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+cardDate2+'</div></div>';
+  html+='<div><span style="font-size:10px;color:#888780;">🕗 集合</span><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+cardMeet+'</div></div>';
+  html+='<div style="grid-column:1/-1"><span style="font-size:10px;color:#888780;">📍 集合場所</span><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+cls.spot+'</div></div>';
+  html+='<div><span style="font-size:10px;color:#888780;">🕓 解散</span><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+cardEnd+'</div></div>';
+  html+='<div style="grid-column:1/-1"><span style="font-size:10px;color:#888780;">🎒 持ち物（上位3点）</span><div style="font-size:12px;color:#2c2c2a;">'+top3+'</div></div>';
+  html+='</div></div>';
 
   html+='<div class="card"><div class="step-header"><div class="step-num">1</div><div class="step-title">基本情報</div></div><div class="step-body"><div class="info-grid">';
   html+='<div><div class="i-label">開催日</div><div class="i-val sm">'+dateStr+'（'+(cls.hasSoar?"日":"土")+'）</div></div>';
@@ -419,6 +534,13 @@ function renderContent(){
   html+='</div></div>';
 
   html+='<div class="card"><div class="step-header"><div class="step-num">5</div><div class="step-title">出欠の回答</div></div><div class="step-body"><div id="attSection"></div><div class="att-note">回答後もこのページから変更できます</div></div></div>';
+
+  html+='<div style="background:#fff8f0;border:1px solid #f5c89a;border-radius:12px;padding:14px 16px;margin-top:4px;">';
+  html+='<div style="font-size:11px;color:#BA7517;font-weight:500;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">📞 当日の連絡・確認</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:8px;">';
+  html+='<a href="https://lin.ee/NIuLm2i" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#06C755;color:#fff;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;">💬 欠席・遅刻はLINEで連絡する</a>';
+  html+='<a href="https://lin.ee/NIuLm2i" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fff;color:#BA7517;border:1px solid #f5c89a;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;">🌧 雨天・警報時の確認もLINEへ</a>';
+  html+='</div></div>';
   document.getElementById("content").innerHTML=html;
   renderAttSection();
 }
@@ -427,7 +549,31 @@ function renderAttSection(){
   var sec=document.getElementById("attSection");
   if(!sec)return;
   var cls=CLS[session.classId];
-  var html="";
+  // 回答ステータスサマリー
+  var types=cls.hasSoar?["hop","soar"]:["hop"];
+  var allAnswered=types.every(function(type){
+    return children.every(function(c){
+      if(!c.name||!c.type)return true;
+      var k=session.classId+"|"+c.name+"|"+currentM+"|"+type;
+      return attStore[k]&&attStore[k].submitted;
+    });
+  });
+  var anyAnswered=types.some(function(type){
+    return children.some(function(c){
+      if(!c.name||!c.type)return false;
+      var k=session.classId+"|"+c.name+"|"+currentM+"|"+type;
+      return attStore[k]&&attStore[k].submitted;
+    });
+  });
+  var statusHtml="";
+  if(allAnswered&&anyAnswered){
+    statusHtml='<div style="background:#E1F5EE;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;color:#0F6E56;font-weight:500;">✓ 全員の回答が完了しています</div>';
+  } else if(anyAnswered){
+    statusHtml='<div style="background:#FAEEDA;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;color:#BA7517;font-weight:500;">⚠ 未回答のお子さんがいます</div>';
+  } else {
+    statusHtml='<div style="background:#F1EFE8;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;color:#888780;">まだ回答していません</div>';
+  }
+  var html=statusHtml;
 
   children.forEach(function(child,idx){
     var isFirst=(idx===0);
