@@ -698,9 +698,10 @@ function renderTabs(){
       renderTabs();
       // スプレッドシートから活動データを読み込んでから表示
       if(!ACTS[m]||!ACTS[m][session.classId]){
-        loadActsFromSheet(m, session.classId).then(function(){renderContent();});
+        loadActsFromSheet(m, session.classId).then(function(){renderContent();try{updatePaymentCard();}catch(e){}});
       } else {
         renderContent();
+        try{updatePaymentCard();}catch(e){}
       }
     };})(mo.m);
     row.appendChild(btn);
@@ -1101,6 +1102,7 @@ async function submitAtt(idx){
     attStore[key].submitted=true;
     attStore[key].name=child.name;attStore[key].classId=session.classId;attStore[key].month=currentM;attStore[key].type=child.type;
     renderAttSection();
+    try{updatePaymentCard();}catch(e){}
   } else {
     if(si)si.innerHTML='<span style="color:#A32D2D;">保存に失敗しました。もう一度お試しください。</span>';
     if(sb)sb.disabled=false;
