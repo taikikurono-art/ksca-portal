@@ -385,9 +385,6 @@ function getTabDate(m){
   var match=d.match(/(\d+)月(\d+)/);
   return match?" "+match[1]+"/"+match[2]:"";
 }
-// 初期化
-try{initFromStorage();}catch(e){}
-
 function renderTabs(){
   var row=document.getElementById("tabRow");row.innerHTML="";
   // 年間一覧タブを先頭に追加
@@ -801,6 +798,9 @@ function renderAdmin(){
   tabDiv.innerHTML=tabHtml;
   tableWrap.parentNode.insertBefore(tabDiv,tableWrap);
 }
+document.addEventListener("DOMContentLoaded",function(){
+  try{initFromStorage();}catch(e){}
+});
 </script>
 </body>
 </html>
