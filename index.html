@@ -374,7 +374,9 @@ async function loadRosterForLogin(cls){
 
 function doLogin(name,cls){
   session={mode:"user",classId:cls,name:name};
-  children=[{name:name,type:CLS[cls].hasSoar?"":"hop"}];
+  // 名簿からtypeを取得（ログイン後にloadDiscountInfoで更新される）
+  var initialType=CLS[cls].hasSoar?"":"hop";
+  children=[{name:name,type:initialType}];
   try{localStorage.setItem("ksca_name",name);localStorage.setItem("ksca_cls",cls);}catch(e){}
   document.getElementById("loginWrap").classList.add("hidden");
   document.getElementById("portalWrap").classList.remove("hidden");
@@ -505,6 +507,12 @@ async function loadDiscountInfo(){
         discountMap[r.name]=r.discount||"";
         rosterCache.push(r);
       });
+      // childrenのtypeを名簿から更新
+      children.forEach(function(c){
+        var found=data.filter(function(r){return r.name===c.name;})[0];
+        if(found)c.type=found.type;
+      });
+      renderContent();
     }
   }catch(e){}
 }
@@ -528,7 +536,7 @@ function calcPayment(month){
 
   // 5月は保護者参加の回答が完了してから表示
   if(month===5){
-    var pKey2="parent_"+session.classId+"_"+session.name+"_"+month;
+    var pKey2="parent_"+session.classId+"_"+session.name+"_5";
     var pAtt2=parentStore[pKey2];
     if(!pAtt2||!pAtt2.submitted)return null;
   }
