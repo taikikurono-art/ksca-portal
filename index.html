@@ -663,11 +663,15 @@ function renderAttSection(){
     if(att.submitted){statusTxt=att.answer==="yes"?"✓ 参加":att.answer==="no"?"✗ 欠席":"△ 検討中";}
 
     html+='<div class="child-att-block">';
-    html+='<div class="child-att-header" onclick="toggleBlock('+idx+')">';
+    var headerBg=att.submitted?(att.answer==="yes"?"#f0faf5":att.answer==="no"?"#fff5f5":"#fffaf0"):"#f9f9f7";
+    html+='<div class="child-att-header" onclick="toggleBlock('+idx+')" style="background:'+headerBg+';">';
     html+='<div class="child-att-header-left">'+badgeHtml;
     if(name){html+='<span class="child-att-name">'+name+'</span>';}
     else{html+='<span class="child-att-name" style="color:#888780;">お名前を入力してください</span>';}
-    if(statusTxt){html+='<span class="child-att-status">'+statusTxt+'</span>';}
+    if(statusTxt){
+      var stColor=att.answer==="yes"?"#0F6E56":att.answer==="no"?"#A32D2D":"#BA7517";
+      html+='<span style="font-size:12px;font-weight:500;color:'+stColor+';">'+statusTxt+'</span>';
+    }
     html+='</div>';
     html+='<span class="chevron'+(isOpen?' open':'')+'">▼</span>';
     html+='</div>';
