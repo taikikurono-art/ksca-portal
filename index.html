@@ -399,6 +399,8 @@ async function doLogin(name,cls){
     loadNews(cls)
   ]);
   renderContent();
+  // 全データ揃ってから支払いカード更新（教室割引・保護者割引反映）
+  try{updatePaymentCard();}catch(e){}
 }
 
 function doAdminLogin(){
@@ -598,9 +600,7 @@ async function loadUserData(){
       }
     }
   });
-  renderContent();
-  // 読み込み完了後に支払いカードも更新（教室割引・保護者割引を反映）
-  try{updatePaymentCard();}catch(e){}
+  // renderContentとupdatePaymentCardはdoLoginのPromise.all完了後に呼ぶ
 }
 
 function attKey(name,month,type){return session.classId+"|"+name+"|"+month+"|"+type;}
