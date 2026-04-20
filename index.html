@@ -538,11 +538,11 @@ function calcPayment(month){
 
   if(!participatingChildren.length)return null;
 
-  // 5月は保護者参加の回答が完了してから表示
+  // 5月は保護者参加の回答が設定済みの場合のみ表示
   if(month===5){
     var pKey2="parent_"+session.classId+"_"+session.name+"_5";
     var pAtt2=parentStore[pKey2];
-    if(!pAtt2||!pAtt2.submitted)return null;
+    if(!pAtt2||!pAtt2.attend)return null;
   }
 
   // 兄弟割引：2人以上参加なら全員−500円
@@ -587,7 +587,6 @@ async function loadUserData(){
     if(r.classId===session.classId){
       if(r.type==="parent"){
         var pKey="parent_"+r.classId+"_"+r.name+"_"+r.month;
-        // answerが日本語の場合はvalに変換
         var pAttend=r.answer;
         if(r.answer==="子どものみ参加")pAttend="none";
         else if(r.answer&&r.answer.indexOf("集合から一緒")>=0)pAttend="together";
@@ -600,6 +599,8 @@ async function loadUserData(){
     }
   });
   renderContent();
+  // 読み込み完了後に支払いカードも更新（教室割引・保護者割引を反映）
+  try{updatePaymentCard();}catch(e){}
 }
 
 function attKey(name,month,type){return session.classId+"|"+name+"|"+month+"|"+type;}
