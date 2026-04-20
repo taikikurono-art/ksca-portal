@@ -165,9 +165,9 @@ input:focus{border-color:#1D9E75;}
       <span class="f-label">パスワード</span>
       <input type="password" id="pwInput" placeholder="スタッフからお知らせしたパスワード">
     </div>
-    <button class="login-btn" onclick="doLogin()">ログイン</button>
+    <button class="login-btn" id="loginBtn">ログイン</button>
     <div class="login-err hidden" id="loginErr">パスワードが正しくありません</div>
-    <div class="admin-link" onclick="showAdminLogin()">管理者ログイン</div>
+    <div class="admin-link" id="showAdminLoginLink">管理者ログイン</div>
   </div>
 </div>
 
@@ -181,9 +181,9 @@ input:focus{border-color:#1D9E75;}
       <span class="f-label">管理者パスワード</span>
       <input type="password" id="adminPwInput" placeholder="管理者パスワード">
     </div>
-    <button class="login-btn" onclick="doAdminLogin()">ログイン</button>
+    <button class="login-btn" id="adminLoginBtn">ログイン</button>
     <div class="login-err hidden" id="adminLoginErr">パスワードが正しくありません</div>
-    <div class="admin-link" onclick="showUserLogin()">保護者ログインに戻る</div>
+    <div class="admin-link" id="showUserLoginLink">保護者ログインに戻る</div>
   </div>
 </div>
 
@@ -193,7 +193,7 @@ input:focus{border-color:#1D9E75;}
       <div class="site-name">KSCA 保護者ページ</div>
       <div class="user-sub" id="userLabel"></div>
     </div>
-    <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+    <button class="logout-btn" id="logoutBtn">ログアウト</button>
   </div>
   <div style="font-size:11px;color:#888780;text-align:right;margin-bottom:8px;">最終更新：<span id="lastUpdated"></span></div>
   <div class="tab-scroll"><div class="tab-row" id="tabRow"></div></div>
@@ -204,8 +204,8 @@ input:focus{border-color:#1D9E75;}
   <div class="admin-header">
     <div class="admin-title">出欠管理画面</div>
     <div style="display:flex;gap:8px;">
-      <button class="reload-btn" onclick="loadAdminData()">再読み込み</button>
-      <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+      <button class="reload-btn" id="reloadAdminBtn">再読み込み</button>
+      <button class="logout-btn" id="adminLogoutBtn">ログアウト</button>
     </div>
   </div>
   <div class="admin-filter" id="adminFilter"></div>
@@ -721,6 +721,7 @@ async function gasGetRoster(){
 
 var adminTab="answered";
 
+function setAdminTab(t){adminTab=t;renderAdmin();}
 function renderAdmin(){
   var fDiv=document.getElementById("adminFilter");
   var btns='<span style="font-size:12px;color:#888780;padding:5px 0;">月を選択：</span>';
@@ -732,7 +733,6 @@ function renderAdmin(){
   var no=entries.filter(function(r){return r.answer==="no";}).length;
   var maybe=entries.filter(function(r){return r.answer==="maybe";}).length;
 
-  // 未回答者を特定
   var unanswered=adminRoster.filter(function(m){
     return !entries.some(function(e){return e.name===m.name&&e.classId===m.classId&&e.type===m.type;});
   });
@@ -745,61 +745,110 @@ function renderAdmin(){
     '<div class="sum-card"><div class="sum-num" style="color:#993356;">'+unansweredCount+'</div><div class="sum-label">未回答</div></div>'+
     '<div class="sum-card"><div class="sum-num">'+entries.length+'</div><div class="sum-label">回答数</div></div>';
 
-  // タブ切替
-  var tabHtml='<div style="display:flex;gap:6px;margin-bottom:12px;">';
-  tabHtml+='<button class="filter-btn'+(adminTab==="answered"?" active":"")+'" onclick="adminTab='answered';renderAdmin()">回答一覧（'+entries.length+'）</button>';
-  tabHtml+='<button class="filter-btn'+(adminTab==="unanswered"?" active":"")+'" onclick="adminTab='unanswered';renderAdmin()" style="'+(unansweredCount>0?"color:#A32D2D;border-color:#A32D2D;":"")+'" >未回答（'+unansweredCount+'）</button>';
-  tabHtml+='<button class="filter-btn'+(adminTab==="maybe"?" active":"")+'" onclick="adminTab='maybe';renderAdmin()">検討中（'+maybe+'）</button>';
-  tabHtml+='</div>';
+  var existingTab=document.getElementById("adminTabRow");
+  if(!existingTab){
+    var tabDiv=document.createElement("div");
+    tabDiv.id="adminTabRow";
+    tabDiv.style.cssText="display:flex;gap:6px;margin-bottom:12px;";
+    var tableWrap=document.getElementById("adminTable");
+    if(tableWrap)tableWrap.parentNode.parentNode.parentNode.insertBefore(tabDiv,tableWrap.parentNode.parentNode);
+  }
+  var tabRow=document.getElementById("adminTabRow");
+  if(tabRow){
+    tabRow.innerHTML="";
+    var t1=document.createElement("button");
+    t1.className="filter-btn"+(adminTab==="answered"?" active":"");
+    t1.textContent="回答一覧（"+entries.length+"）";
+    t1.onclick=function(){setAdminTab("answered");};
+    tabRow.appendChild(t1);
+    var t2=document.createElement("button");
+    t2.className="filter-btn"+(adminTab==="unanswered"?" active":"");
+    t2.textContent="未回答（"+unansweredCount+"）";
+    if(unansweredCount>0){t2.style.color="#A32D2D";t2.style.borderColor="#A32D2D";}
+    t2.onclick=function(){setAdminTab("unanswered");};
+    tabRow.appendChild(t2);
+    var t3=document.createElement("button");
+    t3.className="filter-btn"+(adminTab==="maybe"?" active":"");
+    t3.textContent="検討中（"+maybe+"）";
+    t3.onclick=function(){setAdminTab("maybe");};
+    tabRow.appendChild(t3);
+  }
 
-  var tbody=document.getElementById("adminBody");
-  var tableHead='';
+  var tableEl=document.getElementById("adminTable");
   var rows="";
+  var thead="";
 
   if(adminTab==="answered"){
-    tableHead='<thead><tr><th>お名前</th><th>クラス</th><th>区分</th><th>回答</th><th>理由</th><th>回答日時</th></tr></thead>';
+    thead='<thead><tr><th>お名前</th><th>クラス</th><th>区分</th><th>回答</th><th>理由</th><th>回答日時</th></tr></thead>';
     if(!entries.length){rows='<tr><td colspan="6" class="empty-msg">まだ回答がありません</td></tr>';}
     else{
       entries.forEach(function(r){
         var ts=r.timestamp?new Date(r.timestamp).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
         var clsLabel=r.classId==="kanayama"?"金山":"大曽根";
-        rows+='<tr><td>'+r.name+'</td><td style="font-size:12px;">'+clsLabel+'</td><td>'+(r.type==="hop"?'<span class="tag tag-hop">HOP</span>':'<span class="tag tag-soar">SOAR</span>')+'</td><td>'+(r.answer==="yes"?'<span class="status-yes">参加</span>':r.answer==="no"?'<span class="status-no">欠席</span>':'<span class="status-maybe">検討中</span>')+'</td><td style="font-size:12px;color:#888780;">'+(r.reason||"—")+'</td><td style="font-size:11px;color:#888780;white-space:nowrap;">'+ts+'</td></tr>';
+        var ans=r.answer==="yes"?'<span class="status-yes">参加</span>':r.answer==="no"?'<span class="status-no">欠席</span>':'<span class="status-maybe">検討中</span>';
+        var typ=r.type==="hop"?'<span class="tag tag-hop">HOP</span>':'<span class="tag tag-soar">SOAR</span>';
+        rows+='<tr><td>'+r.name+'</td><td style="font-size:12px;">'+clsLabel+'</td><td>'+typ+'</td><td>'+ans+'</td><td style="font-size:12px;color:#888780;">'+(r.reason||"—")+'</td><td style="font-size:11px;color:#888780;white-space:nowrap;">'+ts+'</td></tr>';
       });
     }
   } else if(adminTab==="unanswered"){
-    tableHead='<thead><tr><th>お名前</th><th>クラス</th><th>区分</th><th>状態</th></tr></thead>';
+    thead='<thead><tr><th>お名前</th><th>クラス</th><th>区分</th><th>状態</th></tr></thead>';
     if(!unanswered.length){rows='<tr><td colspan="4" class="empty-msg">全員回答済みです！</td></tr>';}
     else{
       unanswered.forEach(function(m){
         var clsLabel=m.classId==="kanayama"?"金山":"大曽根";
-        rows+='<tr><td style="font-weight:500;">'+m.name+'</td><td style="font-size:12px;">'+clsLabel+'</td><td>'+(m.type==="hop"?'<span class="tag tag-hop">HOP</span>':'<span class="tag tag-soar">SOAR</span>')+'</td><td><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#FCEBEB;color:#501313;font-weight:500;">未回答</span></td></tr>';
+        var typ=m.type==="hop"?'<span class="tag tag-hop">HOP</span>':'<span class="tag tag-soar">SOAR</span>';
+        rows+='<tr><td style="font-weight:500;">'+m.name+'</td><td style="font-size:12px;">'+clsLabel+'</td><td>'+typ+'</td><td><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#FCEBEB;color:#501313;font-weight:500;">未回答</span></td></tr>';
       });
     }
-  } else if(adminTab==="maybe"){
-    tableHead='<thead><tr><th>お名前</th><th>クラス</th><th>区分</th><th>理由</th><th>回答日時</th></tr></thead>';
+  } else {
+    thead='<thead><tr><th>お名前</th><th>クラス</th><th>区分</th><th>理由</th><th>回答日時</th></tr></thead>';
     var maybeEntries=entries.filter(function(r){return r.answer==="maybe";});
     if(!maybeEntries.length){rows='<tr><td colspan="5" class="empty-msg">検討中の方はいません</td></tr>';}
     else{
       maybeEntries.forEach(function(r){
         var ts=r.timestamp?new Date(r.timestamp).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
         var clsLabel=r.classId==="kanayama"?"金山":"大曽根";
-        rows+='<tr><td style="font-weight:500;">'+r.name+'</td><td style="font-size:12px;">'+clsLabel+'</td><td>'+(r.type==="hop"?'<span class="tag tag-hop">HOP</span>':'<span class="tag tag-soar">SOAR</span>')+'</td><td style="font-size:12px;color:#888780;">'+(r.reason||"—")+'</td><td style="font-size:11px;color:#888780;white-space:nowrap;">'+ts+'</td></tr>';
+        var typ=r.type==="hop"?'<span class="tag tag-hop">HOP</span>':'<span class="tag tag-soar">SOAR</span>';
+        rows+='<tr><td style="font-weight:500;">'+r.name+'</td><td style="font-size:12px;">'+clsLabel+'</td><td>'+typ+'</td><td style="font-size:12px;color:#888780;">'+(r.reason||"—")+'</td><td style="font-size:11px;color:#888780;white-space:nowrap;">'+ts+'</td></tr>';
       });
     }
   }
-
-  document.getElementById("adminTable").innerHTML=tableHead+'<tbody>'+rows+'</tbody>';
-  // タブをテーブルの上に挿入
-  var tableWrap=document.getElementById("adminTable").parentNode.parentNode;
-  var existingTab=document.getElementById("adminTabRow");
-  if(existingTab)existingTab.remove();
-  var tabDiv=document.createElement("div");
-  tabDiv.id="adminTabRow";
-  tabDiv.innerHTML=tabHtml;
-  tableWrap.parentNode.insertBefore(tabDiv,tableWrap);
+  if(tableEl)tableEl.innerHTML=thead+'<tbody>'+rows+'</tbody>';
 }
-document.addEventListener("DOMContentLoaded",function(){
-  try{initFromStorage();}catch(e){}
+
+
+async function gasGetRoster(){
+  try{
+    var params=new URLSearchParams({action:"roster"});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    return JSON.parse(await res.text());
+  }catch(e){return [];}
+}
+
+var adminTab="answered";
+
+// ボタンのイベントをDOMContentLoaded後に設定
+document.addEventListener("DOMContentLoaded", function(){
+  try{ initFromStorage(); }catch(e){}
+
+  function bindBtn(id, fn){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener("click", fn);
+  }
+  function bindKey(id, fn){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener("keydown", function(e){ if(e.key==="Enter") fn(); });
+  }
+
+  bindBtn("loginBtn", doLogin);
+  bindBtn("adminLoginBtn", doAdminLogin);
+  bindBtn("showAdminLoginLink", showAdminLogin);
+  bindBtn("showUserLoginLink", showUserLogin);
+  bindBtn("logoutBtn", doLogout);
+  bindBtn("adminLogoutBtn", doLogout);
+  bindBtn("reloadAdminBtn", loadAdminData);
+  bindKey("pwInput", doLogin);
+  bindKey("adminPwInput", doAdminLogin);
 });
 </script>
 </body>
