@@ -1070,7 +1070,7 @@ async function submitAtt(idx){
   }
 }
 
-function resetAtt(key){if(attStore[key])attStore[key].submitted=false;renderAttSection();updatePaymentCard();}
+function resetAtt(key){if(attStore[key])attStore[key].submitted=false;renderContent();}
 
 function updatePaymentCard(){
   var card=document.getElementById("paymentCard");
