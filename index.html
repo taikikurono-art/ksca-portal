@@ -115,6 +115,12 @@ input:focus{border-color:#1D9E75;}
 .att-note{font-size:12px;color:#888780;text-align:center;margin-top:8px;}
 
 .future-card{text-align:center;padding:2.5rem 1rem;}
+.checklist li{cursor:pointer;}
+.checklist li.checked{opacity:0.45;text-decoration:line-through;}
+.check-box{width:18px;height:18px;border:1.5px solid #D3D1C7;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;background:#fff;}
+.check-box.checked{background:#1D9E75;border-color:#1D9E75;}
+.check-box.checked::after{content:"";display:block;width:5px;height:9px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(45deg) translate(-1px,-1px);}
+.checklist-reset{font-size:11px;color:#888780;background:none;border:none;cursor:pointer;text-decoration:underline;margin-top:8px;display:block;}
 .admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
 .admin-title{font-size:16px;font-weight:500;}
 .admin-filter{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;}
@@ -519,9 +525,11 @@ function renderContent(){
   html+='</div></div>';
 
   var itemList=act.items||BASE_ITEMS;
-  html+='<div class="card"><div class="step-header"><div class="step-num">3</div><div class="step-title">持ち物</div></div><div class="step-body"><ul class="checklist">';
-  itemList.forEach(function(i){html+='<li><span class="chk">✓</span>'+i+'</li>';});
-  html+='</ul></div></div>';
+  html+='<div class="card"><div class="step-header"><div class="step-num">3</div><div class="step-title">持ち物</div></div><div class="step-body"><div style="font-size:11px;color:#888780;margin-bottom:8px;">タップしてチェックできます</div><ul class="checklist" id="itemChecklist">';
+  itemList.forEach(function(i,idx){
+    html+='<li id="item_'+idx+'" onclick="toggleItem('+currentM+','+idx+')" style="user-select:none;"><div class="check-box" id="chkbox_'+idx+'"></div><span>'+i+'</span></li>';
+  });
+  html+='</ul><button class="checklist-reset" onclick="resetItems('+currentM+')">チェックをリセット</button></div></div>';
   html+='<div class="card"><div class="step-header"><div class="step-num">4</div><div class="step-title">服装</div></div><div class="step-body">';
   if(act.clothes){
     html+='<div style="font-size:13px;line-height:1.8;">'+act.clothes+'</div>';
@@ -540,6 +548,45 @@ function renderContent(){
   html+='</div></div>';
   document.getElementById("content").innerHTML=html;
   renderAttSection();
+  try{applyItemChecks(currentM);}catch(e){}
+}
+
+function getItemKey(month){ return "ksca_items_"+session.classId+"_"+month; }
+function loadItemChecks(month){
+  try{
+    var raw=localStorage.getItem(getItemKey(month));
+    return raw?JSON.parse(raw):{};
+  }catch(e){return {};}
+}
+function saveItemChecks(month,checks){
+  try{localStorage.setItem(getItemKey(month),JSON.stringify(checks));}catch(e){}
+}
+function toggleItem(month,idx){
+  var checks=loadItemChecks(month);
+  checks[idx]=!checks[idx];
+  saveItemChecks(month,checks);
+  applyItemChecks(month);
+}
+function resetItems(month){
+  saveItemChecks(month,{});
+  applyItemChecks(month);
+}
+function applyItemChecks(month){
+  var checks=loadItemChecks(month);
+  var act=ACTS[month];
+  var itemList=(act&&act.items)||BASE_ITEMS;
+  itemList.forEach(function(item,idx){
+    var li=document.getElementById("item_"+idx);
+    var box=document.getElementById("chkbox_"+idx);
+    if(!li||!box)return;
+    if(checks[idx]){
+      li.classList.add("checked");
+      box.classList.add("checked");
+    } else {
+      li.classList.remove("checked");
+      box.classList.remove("checked");
+    }
+  });
 }
 
 function renderAttSection(){
