@@ -515,7 +515,7 @@ function calcPayment(month){
   // 保護者参加割引を確認
   var pKey="parent_"+session.classId+"_"+session.name+"_"+month;
   var parentAtt=parentStore[pKey];
-  var parentDiscount=(month===5&&parentAtt&&parentAtt.submitted&&parentAtt.attend!=="none")?1000:0;
+  var parentDiscount=(month===5&&parentAtt&&parentAtt.submitted&&parentAtt.attend!=="none"&&parentAtt.attend!=="子どものみ参加"&&parentAtt.attend!=="")?1000:0;
 
   participatingChildren.forEach(function(c){
     var jumpupDiscount=discountMap[c.name]==="jumpup"?500:0;
@@ -548,7 +548,12 @@ async function loadUserData(){
     if(r.classId===session.classId){
       if(r.type==="parent"){
         var pKey="parent_"+r.classId+"_"+r.name+"_"+r.month;
-        parentStore[pKey]={attend:r.answer,submitted:true};
+        // answerが日本語の場合はvalに変換
+        var pAttend=r.answer;
+        if(r.answer==="子どものみ参加")pAttend="none";
+        else if(r.answer&&r.answer.indexOf("集合から一緒")>=0)pAttend="together";
+        else if(r.answer&&r.answer.indexOf("現地集合")>=0)pAttend="local";
+        parentStore[pKey]={attend:pAttend,submitted:true};
       } else {
         var key=r.classId+"|"+r.name+"|"+r.month+"|"+r.type;
         attStore[key]={answer:r.answer,reason:r.reason||"",submitted:true,name:r.name,classId:r.classId,month:Number(r.month),type:r.type};
