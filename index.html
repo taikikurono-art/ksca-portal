@@ -324,7 +324,9 @@ function doLogin(){
   currentM=4;
   var luEl=document.getElementById("lastUpdated");
   if(luEl)luEl.textContent=LAST_UPDATED;
-  renderTabs();renderContent();
+  renderTabs();
+  // 初回は4月のデータをスプレッドシートから読み込む
+  loadActsFromSheet(4, cls).then(function(){ renderContent(); });
   loadUserData();
   loadNews(cls);
 }
@@ -364,6 +366,37 @@ async function loadNews(classId){
     (item.status==="open"?"本日予定通り開催します":item.status==="cancel"?"本日は中止です":"本日の活動について変更があります")+
     '</div>'+(item.message?'<div style="font-size:12px;color:'+color+';margin-top:2px;opacity:.85;">'+item.message+'</div>':'')+
     '</div>';
+}
+
+// スプレッドシートから活動データを読み込んでACTSに反映
+async function loadActsFromSheet(month, classId){
+  var actsData = await gasGetActs(month, classId);
+  var itemsData = await gasGetItems(month);
+
+  if(!actsData||!actsData.length) return false;
+
+  if(!ACTS[month]) ACTS[month] = {};
+
+  actsData.forEach(function(a){
+    ACTS[month][a.classId] = {
+      meetTime: a.meetTime,
+      dissolveTime: a.dissolveTime,
+      fee: a.fee ? a.fee+"円" : "",
+      transport: a.transport,
+      hop: a.hop,
+      soar: a.soar
+    };
+    if(a.clothes) ACTS[month].clothes = a.clothes;
+  });
+
+  if(itemsData && itemsData.length){
+    itemsData.forEach(function(d){
+      if(Number(d.month)===month && d.items && d.items.length){
+        ACTS[month].items = d.items;
+      }
+    });
+  }
+  return true;
 }
 
 async function loadUserData(){
@@ -417,7 +450,6 @@ function getTabDate(m){
 }
 function renderTabs(){
   var row=document.getElementById("tabRow");row.innerHTML="";
-  // 年間一覧タブを先頭に追加
   var allBtn=document.createElement("button");
   allBtn.className="tab-btn"+(currentM==="all"?" active":"");
   allBtn.textContent="📅 年間日程";
@@ -427,7 +459,16 @@ function renderTabs(){
     var btn=document.createElement("button");
     btn.className="tab-btn"+(mo.m===currentM?" active":"");
     btn.textContent=mo.e+" "+mo.l+getTabDate(mo.m);
-    btn.onclick=(function(m){return function(){currentM=m;renderTabs();renderContent();};})(mo.m);
+    btn.onclick=(function(m){return function(){
+      currentM=m;
+      renderTabs();
+      // スプレッドシートから活動データを読み込んでから表示
+      if(!ACTS[m]||!ACTS[m][session.classId]){
+        loadActsFromSheet(m, session.classId).then(function(){renderContent();});
+      } else {
+        renderContent();
+      }
+    };})(mo.m);
     row.appendChild(btn);
   });
 }
@@ -786,6 +827,22 @@ async function loadAdminData(){
   renderAdmin();
 }
 
+async function gasGetActs(month, classId){
+  try{
+    var params=new URLSearchParams({action:"acts",month:month,classId:classId});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    return JSON.parse(await res.text());
+  }catch(e){return [];}
+}
+
+async function gasGetItems(month){
+  try{
+    var params=new URLSearchParams({action:"items",month:month});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    return JSON.parse(await res.text());
+  }catch(e){return [];}
+}
+
 async function gasGetNews(classId){
   try{
     var params=new URLSearchParams({action:"news",classId:classId});
@@ -899,6 +956,22 @@ function renderAdmin(){
   if(tableEl)tableEl.innerHTML=thead+'<tbody>'+rows+'</tbody>';
 }
 
+
+async function gasGetActs(month, classId){
+  try{
+    var params=new URLSearchParams({action:"acts",month:month,classId:classId});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    return JSON.parse(await res.text());
+  }catch(e){return [];}
+}
+
+async function gasGetItems(month){
+  try{
+    var params=new URLSearchParams({action:"items",month:month});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    return JSON.parse(await res.text());
+  }catch(e){return [];}
+}
 
 async function gasGetNews(classId){
   try{
