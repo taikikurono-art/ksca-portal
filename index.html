@@ -592,6 +592,13 @@ async function loadUserData(){
       } else {
         var key=r.classId+"|"+r.name+"|"+r.month+"|"+r.type;
         attStore[key]={answer:r.answer,reason:r.reason||"",submitted:true,name:r.name,classId:r.classId,month:Number(r.month),type:r.type};
+        // 兄弟姉妹を自動復元（自分以外の名前で回答があれば追加）
+        if(r.name!==session.name){
+          var exists=children.filter(function(c){return c.name===r.name;}).length>0;
+          if(!exists&&children.length<1+MAX_SIBLINGS){
+            children.push({name:r.name,type:r.type});
+          }
+        }
       }
     }
   });
@@ -979,6 +986,23 @@ function renderAttSection(){
     return att&&att.submitted&&att.answer==="yes";
   });
 
+
+  // 5月：保護者参加未入力の警告
+  if(currentM===5){
+    var pKeyCheck="parent_"+session.classId+"_"+session.name+"_5";
+    var pAttCheck=parentStore[pKeyCheck];
+    var childAnswered=children.some(function(c){
+      if(!c.name||!c.type)return false;
+      var k=session.classId+"|"+c.name+"|"+5+"|"+c.type;
+      return attStore[k]&&attStore[k].submitted&&attStore[k].answer==="yes";
+    });
+    if(childAnswered&&(!pAttCheck||!pAttCheck.submitted)){
+      var warnDiv=document.createElement("div");
+      warnDiv.style.cssText="background:#FAEEDA;border:1px solid #BA7517;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:13px;color:#854F0B;font-weight:500;";
+      warnDiv.textContent="⚠️ 保護者の参加有無が未回答です。下の「保護者の参加について」から回答してください。";
+      sec.appendChild(warnDiv);
+    }
+  }
 
   // 5月の場合は保護者参加欄を追加
   if(currentM===5){
