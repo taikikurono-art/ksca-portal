@@ -844,7 +844,8 @@ function renderContent(){
   document.getElementById("content").innerHTML=html;
   renderAttSection();
   try{applyItemChecks(currentM);}catch(e){}
-  try{updatePaymentCard();}catch(e){}
+  // 5月は保護者回答後にsubmitParentから呼ぶので、ここでは5月以外のみ実行
+  if(currentM!==5){try{updatePaymentCard();}catch(e){}}
 }
 
 function getItemKey(month){ return "ksca_items_"+session.classId+"_"+month; }
