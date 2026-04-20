@@ -171,14 +171,17 @@ input:focus{border-color:#1D9E75;}
       </div>
     </div>
     <div class="field-wrap">
-      <span class="f-label">お子様のお名前（1人目）</span>
-      <input type="text" id="nameInput" placeholder="例：田中 太郎">
-    </div>
-    <div class="field-wrap">
       <span class="f-label">パスワード</span>
       <input type="password" id="pwInput" placeholder="スタッフからお知らせしたパスワード">
     </div>
-    <button class="login-btn" id="loginBtn">ログイン</button>
+    <div class="field-wrap hidden" id="nameSelectWrap">
+      <span class="f-label">お子様のお名前を選んでください</span>
+      <select id="nameSelect" style="width:100%;padding:9px 10px;font-size:14px;border:0.5px solid rgba(0,0,0,0.15);border-radius:8px;background:#fff;color:#2c2c2a;outline:none;border-color:#1D9E75;">
+        <option value="">-- 選択してください --</option>
+      </select>
+      <div style="font-size:11px;color:#888780;margin-top:4px;">兄弟姉妹は後から追加できます</div>
+    </div>
+    <button class="login-btn" id="loginBtn">次へ</button>
     <div class="login-err hidden" id="loginErr">パスワードが正しくありません</div>
     <div class="admin-link" id="showAdminLoginLink">管理者ログイン</div>
   </div>
@@ -299,9 +302,7 @@ async function gasGet(month){
 
 function initFromStorage(){
   try{
-    var savedName=localStorage.getItem("ksca_name");
     var savedCls=localStorage.getItem("ksca_cls");
-    if(savedName){document.getElementById("nameInput").value=savedName;}
     if(savedCls){
       document.querySelectorAll('input[name="cls"]').forEach(function(r){
         r.checked=(r.value===savedCls);
@@ -1275,7 +1276,14 @@ document.addEventListener("DOMContentLoaded", function(){
     if(el) el.addEventListener("keydown", function(e){ if(e.key==="Enter") fn(); });
   }
 
-  bindBtn("loginBtn", doLogin);
+  bindBtn("loginBtn", handleLoginBtn);
+  document.querySelectorAll('input[name="cls"]').forEach(function(r){
+    r.addEventListener("change",function(){
+      loginStep="pw";
+      document.getElementById("nameSelectWrap").classList.add("hidden");
+      document.getElementById("loginBtn").textContent="次へ";
+    });
+  });
   bindBtn("adminLoginBtn", doAdminLogin);
   bindBtn("showAdminLoginLink", showAdminLogin);
   bindBtn("showUserLoginLink", showUserLogin);
