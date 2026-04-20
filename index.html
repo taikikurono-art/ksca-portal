@@ -317,29 +317,80 @@ function getSelClass(){
 function showAdminLogin(){document.getElementById("loginWrap").classList.add("hidden");document.getElementById("adminLoginWrap").classList.remove("hidden");}
 function showUserLogin(){document.getElementById("adminLoginWrap").classList.add("hidden");document.getElementById("loginWrap").classList.remove("hidden");}
 
-function doLogin(){
-  var name=normalizeName(document.getElementById("nameInput").value);
-  var pw=document.getElementById("pwInput").value;
+var loginStep="pw";
+
+async function handleLoginBtn(){
   var cls=getSelClass();
-  if(!name){document.getElementById("nameInput").focus();return;}
-  if(pw!==PW[cls]){document.getElementById("loginErr").classList.remove("hidden");return;}
-  document.getElementById("loginErr").classList.add("hidden");
+  if(loginStep==="pw"){
+    var pw=document.getElementById("pwInput").value;
+    if(pw!==PW[cls]){document.getElementById("loginErr").classList.remove("hidden");return;}
+    document.getElementById("loginErr").classList.add("hidden");
+    var btn=document.getElementById("loginBtn");
+    btn.disabled=true;btn.textContent="読み込み中...";
+    var roster=null;
+    try{roster=await loadRosterForLogin(cls);}catch(e){roster=[];}
+    btn.disabled=false;
+    if(roster&&roster.length){
+      var sel=document.getElementById("nameSelect");
+      sel.innerHTML='<option value="">-- 選択してください --</option>';
+      var names=[];
+      roster.forEach(function(r){if(names.indexOf(r.name)<0)names.push(r.name);});
+      names.forEach(function(n){
+        var opt=document.createElement("option");
+        opt.value=n;opt.textContent=n;
+        sel.appendChild(opt);
+      });
+      try{
+        var saved=localStorage.getItem("ksca_name");
+        if(saved)sel.value=saved;
+      }catch(e){}
+      document.getElementById("nameSelectWrap").classList.remove("hidden");
+      loginStep="name";
+      btn.textContent="ログイン";
+    } else {
+      // 名簿取得失敗時はテキスト入力にフォールバック
+      var errEl=document.getElementById("loginErr");
+      errEl.textContent="名簿の読み込みに失敗しました。再度お試しください。";
+      errEl.classList.remove("hidden");
+      btn.textContent="次へ";
+    }
+  } else {
+    var name=document.getElementById("nameSelect").value;
+    if(!name){document.getElementById("nameSelect").focus();return;}
+    doLogin(name,cls);
+  }
+}
+
+async function loadRosterForLogin(cls){
+  try{
+    var params=new URLSearchParams({action:"roster",classId:cls});
+    var res=await fetch(GAS_URL+"?"+params.toString(),{redirect:"follow"});
+    var text=await res.text();
+    return JSON.parse(text);
+  }catch(e){
+    console.error("roster fetch error",e);
+    return [];
+  }
+}
+
+function doLogin(name,cls){
   session={mode:"user",classId:cls,name:name};
-  // 1人目の子どもを設定（大曽根はhop固定）
   children=[{name:name,type:CLS[cls].hasSoar?"":"hop"}];
+  try{localStorage.setItem("ksca_name",name);localStorage.setItem("ksca_cls",cls);}catch(e){}
   document.getElementById("loginWrap").classList.add("hidden");
   document.getElementById("portalWrap").classList.remove("hidden");
   document.getElementById("userLabel").textContent=CLS[cls].label+"　"+name+" さん";
+  loginStep="pw";
   currentM=4;
   var luEl=document.getElementById("lastUpdated");
   if(luEl)luEl.textContent=LAST_UPDATED;
   renderTabs();
-  // 初回は4月のデータをスプレッドシートから読み込む
-  loadActsFromSheet(4, cls).then(function(){ renderContent(); });
+  loadActsFromSheet(4,cls).then(function(){renderContent();});
   loadUserData();
-  loadRosterDiscount();
+  loadDiscountInfo();
   loadNews(cls);
 }
+
 function doAdminLogin(){
   var pw=document.getElementById("adminPwInput").value;
   if(pw!==PW.admin){document.getElementById("adminLoginErr").classList.remove("hidden");return;}
@@ -1277,6 +1328,13 @@ document.addEventListener("DOMContentLoaded", function(){
   }
 
   bindBtn("loginBtn", handleLoginBtn);
+  document.querySelectorAll('input[name="cls"]').forEach(function(r){
+    r.addEventListener("change",function(){
+      loginStep="pw";
+      document.getElementById("nameSelectWrap").classList.add("hidden");
+      document.getElementById("loginBtn").textContent="次へ";
+    });
+  });
   document.querySelectorAll('input[name="cls"]').forEach(function(r){
     r.addEventListener("change",function(){
       loginStep="pw";
