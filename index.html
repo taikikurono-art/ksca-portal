@@ -792,30 +792,59 @@ function renderAttSection(){
     var pAtt=parentStore[pKey]||{};
     var pSubmitted=pAtt.submitted;
 
-    var pHtml='<div class="parent-att-title">👨‍👩‍👧 保護者の参加について</div>';
+    // タイトル
+    var pTitle=document.createElement("div");
+    pTitle.className="parent-att-title";
+    pTitle.textContent="👨‍👩‍👧 保護者の参加について";
+    parentCard.appendChild(pTitle);
+
     if(pSubmitted){
       var pLabel=pAtt.attend==="none"?"子どものみ参加":pAtt.attend==="together"?"保護者も参加（集合から一緒）":"保護者も参加（現地集合）";
       var pFee=pAtt.attend==="none"?"参加費：6,000円":"参加費：5,000円（−1,000円）";
-      pHtml+='<div style="background:#E1F5EE;border-radius:8px;padding:10px 12px;font-size:13px;color:#0F6E56;">';
-      pHtml+='<div style="font-weight:500;">✓ '+pLabel+'</div>';
-      pHtml+='<div style="font-size:12px;margin-top:4px;">'+pFee+'</div>';
-      pHtml+='<button onclick="resetParent(''+pKey+'')" style="font-size:11px;background:none;border:none;color:#888780;cursor:pointer;text-decoration:underline;margin-top:6px;display:block;">変更する</button>';
-      pHtml+='</div>';
+      var doneDiv=document.createElement("div");
+      doneDiv.style.cssText="background:#E1F5EE;border-radius:8px;padding:10px 12px;font-size:13px;color:#0F6E56;";
+      doneDiv.innerHTML="<div style='font-weight:500;'>✓ "+pLabel+"</div><div style='font-size:12px;margin-top:4px;'>"+pFee+"</div>";
+      var chgBtn=document.createElement("button");
+      chgBtn.textContent="変更する";
+      chgBtn.style.cssText="font-size:11px;background:none;border:none;color:#888780;cursor:pointer;text-decoration:underline;margin-top:6px;display:block;";
+      chgBtn.onclick=function(){resetParent(pKey);};
+      doneDiv.appendChild(chgBtn);
+      parentCard.appendChild(doneDiv);
     } else {
-      var chkNone=pAtt.attend==="none"?"checked":"";
-      var chkTogether=pAtt.attend==="together"?"checked":"";
-      var chkLocal=pAtt.attend==="local"?"checked":"";
-      pHtml+='<div class="parent-radio-group">';
-      pHtml+='<label class="parent-option"><input type="radio" name="parentAtt" value="none" '+chkNone+' onchange="onParentChange(''+pKey+'','none')"><span class="parent-option-label">子どものみ参加　<span style="font-size:11px;color:#888780;">参加費：6,000円</span></span></label>';
-      pHtml+='<label class="parent-option"><input type="radio" name="parentAtt" value="together" '+chkTogether+' onchange="onParentChange(''+pKey+'','together')"><span class="parent-option-label">保護者も参加（集合から一緒）　<span style="font-size:11px;color:#185FA5;">参加費：5,000円</span></span></label>';
-      pHtml+='<label class="parent-option"><input type="radio" name="parentAtt" value="local" '+chkLocal+' onchange="onParentChange(''+pKey+'','local')"><span class="parent-option-label">保護者も参加（現地集合）　<span style="font-size:11px;color:#185FA5;">参加費：5,000円</span></span></label>';
-      pHtml+='</div>';
-      pHtml+='<div id="parentSubmitArea" style="'+(pAtt.attend?'':'display:none;')+'">';
-      pHtml+='<button onclick="submitParent(''+pKey+'')" style="width:100%;padding:10px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;margin-top:10px;">保護者参加を送信する</button>';
-      pHtml+='<div id="parentSaving" class="saving-indicator"></div>';
-      pHtml+='</div>';
+      var opts=[
+        {val:"none", label:"子どものみ参加", fee:"6,000円", feeColor:"#888780"},
+        {val:"together", label:"保護者も参加（集合から一緒）", fee:"5,000円", feeColor:"#185FA5"},
+        {val:"local", label:"保護者も参加（現地集合）", fee:"5,000円", feeColor:"#185FA5"}
+      ];
+      var radioGroup=document.createElement("div");
+      radioGroup.className="parent-radio-group";
+      opts.forEach(function(opt){
+        var lbl=document.createElement("label");
+        lbl.className="parent-option";
+        var inp=document.createElement("input");
+        inp.type="radio";inp.name="parentAtt";inp.value=opt.val;
+        if(pAtt.attend===opt.val)inp.checked=true;
+        inp.onchange=function(){onParentChange(pKey,opt.val);};
+        var sp=document.createElement("span");
+        sp.className="parent-option-label";
+        sp.innerHTML=opt.label+"　<span style='font-size:11px;color:"+opt.feeColor+";'>参加費："+opt.fee+"</span>";
+        lbl.appendChild(inp);lbl.appendChild(sp);
+        radioGroup.appendChild(lbl);
+      });
+      parentCard.appendChild(radioGroup);
+
+      var submitArea=document.createElement("div");
+      submitArea.id="parentSubmitArea";
+      submitArea.style.display=pAtt.attend?"block":"none";
+      var subBtn=document.createElement("button");
+      subBtn.textContent="保護者参加を送信する";
+      subBtn.style.cssText="width:100%;padding:10px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;margin-top:10px;";
+      subBtn.onclick=function(){submitParent(pKey);};
+      var savingDiv=document.createElement("div");
+      savingDiv.id="parentSaving";savingDiv.className="saving-indicator";
+      submitArea.appendChild(subBtn);submitArea.appendChild(savingDiv);
+      parentCard.appendChild(submitArea);
     }
-    parentCard.innerHTML=pHtml;
     sec.appendChild(parentCard);
   }
 }
