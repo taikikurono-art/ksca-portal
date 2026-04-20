@@ -239,6 +239,7 @@ function normalizeName(val){
   return val.replace(/\u3000/g," ").replace(/\s+/g,"").trim();
 }
 var LAST_UPDATED="2026年4月20日";
+var PAYPAL_URL="https://paypal.me/educare0713?locale.x=ja_JP&country.x=JP";
 var GAS_URL="https://script.google.com/macros/s/AKfycby3ldBnzepQBPSuXQXuMMrzH6kaA_aG4ZaxL0fnMwjasjmPQL1xNEuCacBOKTQNUQrH/exec";
 var PW={kanayama:"ksca2026",ozone:"ozone2026",admin:"ksca_admin"};
 var CLS={
@@ -335,6 +336,7 @@ function doLogin(){
   // 初回は4月のデータをスプレッドシートから読み込む
   loadActsFromSheet(4, cls).then(function(){ renderContent(); });
   loadUserData();
+  loadRosterDiscount();
   loadNews(cls);
 }
 function doAdminLogin(){
@@ -376,6 +378,18 @@ async function loadNews(classId){
 }
 
 // スプレッドシートから活動データを読み込んでACTSに反映
+async function loadRosterDiscount(){
+  try{
+    var params=new URLSearchParams({action:"roster",classId:session.classId});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    var data=JSON.parse(await res.text());
+    if(!data||!Array.isArray(data))return;
+    data.forEach(function(r){
+      rosterDiscount[r.name]=r.discount||"";
+    });
+  }catch(e){}
+}
+
 async function loadActsFromSheet(month, classId){
   var actsData = await gasGetActs(month, classId);
   var itemsData = await gasGetItems(month);
@@ -404,6 +418,67 @@ async function loadActsFromSheet(month, classId){
     });
   }
   return true;
+}
+
+// 割引情報キャッシュ
+var discountMap={};
+
+async function loadDiscountInfo(){
+  try{
+    var params=new URLSearchParams({action:"roster",classId:session.classId});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    var data=JSON.parse(await res.text());
+    discountMap={};
+    if(data&&Array.isArray(data)){
+      data.forEach(function(r){
+        discountMap[r.name]=r.discount||"";
+      });
+    }
+  }catch(e){}
+}
+
+// 支払い金額を計算
+function calcPayment(month){
+  var act=ACTS[month];
+  var clsAct=(act&&act[session.classId])||{};
+  var baseFee=clsAct.fee?parseInt(clsAct.fee):0;
+  if(!baseFee)return null;
+
+  // 参加する子どもをカウント
+  var participatingChildren=children.filter(function(c){
+    if(!c.name||!c.type)return false;
+    var key=session.classId+"|"+c.name+"|"+month+"|"+c.type;
+    var att=attStore[key];
+    return att&&att.submitted&&att.answer==="yes";
+  });
+
+  if(!participatingChildren.length)return null;
+
+  // 兄弟割引：2人以上参加なら全員−500円
+  var siblingDiscount=participatingChildren.length>=2?500:0;
+
+  var breakdown=[];
+  var total=0;
+
+  participatingChildren.forEach(function(c){
+    var jumpupDiscount=discountMap[c.name]==="jumpup"?500:0;
+    var discount=siblingDiscount+jumpupDiscount;
+    var amount=Math.max(0,baseFee-discount);
+    total+=amount;
+    var discNote=[];
+    if(siblingDiscount)discNote.push("兄弟割−500円");
+    if(jumpupDiscount)discNote.push("教室割−500円");
+    breakdown.push({
+      name:c.name,
+      type:c.type,
+      base:baseFee,
+      discount:discount,
+      amount:amount,
+      note:discNote.join("・")
+    });
+  });
+
+  return {breakdown:breakdown,total:total};
 }
 
 async function loadUserData(){
@@ -615,6 +690,7 @@ function renderContent(){
   html+='</div></div>';
 
   html+='<div class="card"><div class="step-header"><div class="step-num">5</div><div class="step-title">出欠の回答</div></div><div class="step-body"><div id="attSection"></div><div class="att-note">回答後もこのページから変更できます</div></div></div>';
+  html+='<div id="paymentCard"></div>';
 
   html+='<div style="background:#fff8f0;border:1px solid #f5c89a;border-radius:12px;padding:14px 16px;margin-top:4px;">';
   html+='<div style="font-size:11px;color:#BA7517;font-weight:500;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">📞 当日の連絡・確認</div>';
@@ -625,6 +701,7 @@ function renderContent(){
   document.getElementById("content").innerHTML=html;
   renderAttSection();
   try{applyItemChecks(currentM);}catch(e){}
+  try{updatePaymentCard();}catch(e){}
 }
 
 function getItemKey(month){ return "ksca_items_"+session.classId+"_"+month; }
@@ -669,31 +746,7 @@ function renderAttSection(){
   var sec=document.getElementById("attSection");
   if(!sec)return;
   var cls=CLS[session.classId];
-  // 回答ステータスサマリー
-  var types=cls.hasSoar?["hop","soar"]:["hop"];
-  var allAnswered=types.every(function(type){
-    return children.every(function(c){
-      if(!c.name||!c.type)return true;
-      var k=session.classId+"|"+c.name+"|"+currentM+"|"+type;
-      return attStore[k]&&attStore[k].submitted;
-    });
-  });
-  var anyAnswered=types.some(function(type){
-    return children.some(function(c){
-      if(!c.name||!c.type)return false;
-      var k=session.classId+"|"+c.name+"|"+currentM+"|"+type;
-      return attStore[k]&&attStore[k].submitted;
-    });
-  });
-  var statusHtml="";
-  if(allAnswered&&anyAnswered){
-    statusHtml='<div style="background:#E1F5EE;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;color:#0F6E56;font-weight:500;">✓ 全員の回答が完了しています</div>';
-  } else if(anyAnswered){
-    statusHtml='<div style="background:#FAEEDA;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;color:#BA7517;font-weight:500;">⚠ 未回答のお子さんがいます</div>';
-  } else {
-    statusHtml='<div style="background:#F1EFE8;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;color:#888780;">まだ回答していません</div>';
-  }
-  var html=statusHtml;
+  var html="";
 
   children.forEach(function(child,idx){
     var isFirst=(idx===0);
@@ -783,6 +836,78 @@ function renderAttSection(){
   html+='</div>';
 
   sec.innerHTML=html;
+
+  // 支払い金額計算・PayPalボタン
+  var participatingChildren=children.filter(function(c){
+    if(!c.name||!c.type)return false;
+    var k=session.classId+"|"+c.name+"|"+currentM+"|"+c.type;
+    var att=attStore[k];
+    return att&&att.submitted&&att.answer==="yes";
+  });
+
+  if(participatingChildren.length>0){
+    var act=ACTS[currentM];
+    var clsAct=(act&&act[session.classId])||{};
+    var baseFee=clsAct.fee?parseInt(clsAct.fee):6500;
+    var siblingDiscount=participatingChildren.length>=2?500:0;
+
+    var payBlock=document.createElement("div");
+    payBlock.style.cssText="background:#f9f9f7;border:1px solid rgba(0,0,0,0.1);border-radius:10px;padding:14px 16px;margin-top:10px;";
+
+    var payTitle=document.createElement("div");
+    payTitle.style.cssText="font-size:12px;font-weight:500;color:#2c2c2a;margin-bottom:10px;";
+    payTitle.textContent="💴 今月のお支払い金額";
+    payBlock.appendChild(payTitle);
+
+    var totalAll=0;
+    participatingChildren.forEach(function(c){
+      var jumpupDiscount=rosterDiscount[c.name]==="jumpup"?500:0;
+      var total=baseFee-siblingDiscount-jumpupDiscount;
+      totalAll+=total;
+
+      var row=document.createElement("div");
+      row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);font-size:13px;";
+      var nameSpan=document.createElement("span");
+      nameSpan.style.color="#2c2c2a";
+      var discountTxt="";
+      if(siblingDiscount)discountTxt+=" 兄弟割−500円";
+      if(jumpupDiscount)discountTxt+=" 教室割−500円";
+      nameSpan.textContent=c.name+(discountTxt?" ("+discountTxt.trim()+")":"");
+      var feeSpan=document.createElement("span");
+      feeSpan.style.cssText="font-weight:500;color:#2c2c2a;";
+      feeSpan.textContent="¥"+total.toLocaleString();
+      row.appendChild(nameSpan);row.appendChild(feeSpan);
+      payBlock.appendChild(row);
+    });
+
+    // 合計
+    if(participatingChildren.length>1){
+      var totalRow=document.createElement("div");
+      totalRow.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:8px 0 4px;font-size:14px;font-weight:500;";
+      var totalLabel=document.createElement("span");
+      totalLabel.textContent="合計";
+      var totalAmt=document.createElement("span");
+      totalAmt.style.color="#1D9E75";
+      totalAmt.textContent="¥"+totalAll.toLocaleString();
+      totalRow.appendChild(totalLabel);totalRow.appendChild(totalAmt);
+      payBlock.appendChild(totalRow);
+    }
+
+    // PayPalボタン
+    var payBtn=document.createElement("a");
+    payBtn.href=PAYPAL_URL;
+    payBtn.target="_blank";
+    payBtn.style.cssText="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 0;background:#0070E0;color:#fff;border-radius:8px;font-size:14px;font-weight:500;text-decoration:none;margin-top:12px;";
+    payBtn.innerHTML="💳 PayPalで支払う　¥"+totalAll.toLocaleString();
+    payBlock.appendChild(payBtn);
+
+    var payNote=document.createElement("div");
+    payNote.style.cssText="font-size:11px;color:#888780;text-align:center;margin-top:6px;";
+    payNote.textContent="集合時間までにお支払いをお願いします";
+    payBlock.appendChild(payNote);
+
+    sec.appendChild(payBlock);
+  }
 
   // 5月の場合は保護者参加欄を追加
   if(currentM===5){
@@ -885,7 +1010,39 @@ async function submitAtt(idx){
   }
 }
 
-function resetAtt(key){if(attStore[key])attStore[key].submitted=false;renderAttSection();}
+function resetAtt(key){if(attStore[key])attStore[key].submitted=false;renderAttSection();updatePaymentCard();}
+
+function updatePaymentCard(){
+  var card=document.getElementById("paymentCard");
+  if(!card)return;
+  var payment=calcPayment(currentM);
+  if(!payment){card.innerHTML="";return;}
+
+  var html='<div style="background:#f0f8ff;border:1px solid #b5d4f4;border-radius:12px;padding:14px 16px;margin-top:4px;">';
+  html+='<div style="font-size:11px;color:#185FA5;font-weight:500;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">💴 今月のお支払い金額</div>';
+
+  payment.breakdown.forEach(function(b){
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);">';
+    html+='<div><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+b.name+'<span style="font-size:11px;color:#888780;margin-left:6px;">'+(b.type==="hop"?"HOP":"SOAR")+'</span></div>';
+    if(b.note){html+='<div style="font-size:11px;color:#1D9E75;">'+b.note+'</div>';}
+    html+='</div>';
+    html+='<div style="font-size:15px;font-weight:500;color:#185FA5;">¥'+b.amount.toLocaleString()+'</div>';
+    html+='</div>';
+  });
+
+  if(payment.breakdown.length>1){
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 6px;">';
+    html+='<div style="font-size:13px;font-weight:500;color:#2c2c2a;">合計</div>';
+    html+='<div style="font-size:18px;font-weight:500;color:#185FA5;">¥'+payment.total.toLocaleString()+'</div>';
+    html+='</div>';
+  }
+
+  html+='<a href="'+PAYPAL_URL+'" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px;background:#003087;color:#fff;border-radius:8px;font-size:14px;font-weight:500;text-decoration:none;">💳 PayPalで支払う</a>';
+  html+='<div style="font-size:11px;color:#888780;text-align:center;margin-top:6px;">集合時間までにお支払いをお願いします</div>';
+  html+='</div>';
+
+  card.innerHTML=html;
+}
 
 function onParentChange(pKey,val){
   if(!parentStore[pKey])parentStore[pKey]={};
@@ -925,6 +1082,8 @@ function resetParent(pKey){
 
 var adminRoster=[];
 var parentStore={};// 保護者参加回答 {key: {attend, join}}
+var rosterDiscount={};// {name: "jumpup" or ""}
+var PAYPAL_URL="https://paypal.me/educare0713?locale.x=ja_JP&country.x=JP";
 
 async function loadAdminData(){
   var st=document.getElementById("adminStatus");
