@@ -526,6 +526,13 @@ function calcPayment(month){
 
   if(!participatingChildren.length)return null;
 
+  // 5月は保護者参加の回答が完了してから表示
+  if(month===5){
+    var pKey2="parent_"+session.classId+"_"+session.name+"_"+month;
+    var pAtt2=parentStore[pKey2];
+    if(!pAtt2||!pAtt2.submitted)return null;
+  }
+
   // 兄弟割引：2人以上参加なら全員−500円
   var siblingDiscount=participatingChildren.length>=2?500:0;
 
