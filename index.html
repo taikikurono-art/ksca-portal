@@ -984,69 +984,6 @@ function renderAttSection(){
     return att&&att.submitted&&att.answer==="yes";
   });
 
-  if(participatingChildren.length>0){
-    var act=ACTS[currentM];
-    var clsAct=(act&&act[session.classId])||{};
-    var baseFee=clsAct.fee?parseInt(clsAct.fee):6500;
-    var siblingDiscount=participatingChildren.length>=2?500:0;
-
-    var payBlock=document.createElement("div");
-    payBlock.style.cssText="background:#f9f9f7;border:1px solid rgba(0,0,0,0.1);border-radius:10px;padding:14px 16px;margin-top:10px;";
-
-    var payTitle=document.createElement("div");
-    payTitle.style.cssText="font-size:12px;font-weight:500;color:#2c2c2a;margin-bottom:10px;";
-    payTitle.textContent="💴 今月のお支払い金額";
-    payBlock.appendChild(payTitle);
-
-    var totalAll=0;
-    participatingChildren.forEach(function(c){
-      var jumpupDiscount=rosterDiscount[c.name]==="jumpup"?500:0;
-      var total=baseFee-siblingDiscount-jumpupDiscount;
-      totalAll+=total;
-
-      var row=document.createElement("div");
-      row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);font-size:13px;";
-      var nameSpan=document.createElement("span");
-      nameSpan.style.color="#2c2c2a";
-      var discountTxt="";
-      if(siblingDiscount)discountTxt+=" 兄弟割−500円";
-      if(jumpupDiscount)discountTxt+=" 教室割−500円";
-      nameSpan.textContent=c.name+(discountTxt?" ("+discountTxt.trim()+")":"");
-      var feeSpan=document.createElement("span");
-      feeSpan.style.cssText="font-weight:500;color:#2c2c2a;";
-      feeSpan.textContent="¥"+total.toLocaleString();
-      row.appendChild(nameSpan);row.appendChild(feeSpan);
-      payBlock.appendChild(row);
-    });
-
-    // 合計
-    if(participatingChildren.length>1){
-      var totalRow=document.createElement("div");
-      totalRow.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:8px 0 4px;font-size:14px;font-weight:500;";
-      var totalLabel=document.createElement("span");
-      totalLabel.textContent="合計";
-      var totalAmt=document.createElement("span");
-      totalAmt.style.color="#1D9E75";
-      totalAmt.textContent="¥"+totalAll.toLocaleString();
-      totalRow.appendChild(totalLabel);totalRow.appendChild(totalAmt);
-      payBlock.appendChild(totalRow);
-    }
-
-    // PayPalボタン
-    var payBtn=document.createElement("a");
-    payBtn.href=PAYPAL_URL;
-    payBtn.target="_blank";
-    payBtn.style.cssText="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 0;background:#0070E0;color:#fff;border-radius:8px;font-size:14px;font-weight:500;text-decoration:none;margin-top:12px;";
-    payBtn.innerHTML="💳 PayPalで支払う　¥"+totalAll.toLocaleString();
-    payBlock.appendChild(payBtn);
-
-    var payNote=document.createElement("div");
-    payNote.style.cssText="font-size:11px;color:#888780;text-align:center;margin-top:6px;";
-    payNote.textContent="集合時間までにお支払いをお願いします";
-    payBlock.appendChild(payNote);
-
-    sec.appendChild(payBlock);
-  }
 
   // 5月の場合は保護者参加欄を追加
   if(currentM===5){
