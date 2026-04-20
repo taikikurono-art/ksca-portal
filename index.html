@@ -592,10 +592,12 @@ async function loadUserData(){
       } else {
         var key=r.classId+"|"+r.name+"|"+r.month+"|"+r.type;
         attStore[key]={answer:r.answer,reason:r.reason||"",submitted:true,name:r.name,classId:r.classId,month:Number(r.month),type:r.type};
-        // 兄弟姉妹を自動復元（自分以外の名前で回答があれば追加）
+        // 兄弟姉妹を自動復元（同じ苗字かつ名簿に存在する子のみ）
         if(r.name!==session.name){
+          var isSibling=getFamilyName(r.name)===getFamilyName(session.name);
+          var inRoster=rosterCache.filter(function(rc){return rc.name===r.name;}).length>0;
           var exists=children.filter(function(c){return c.name===r.name;}).length>0;
-          if(!exists&&children.length<1+MAX_SIBLINGS){
+          if(isSibling&&inRoster&&!exists&&children.length<1+MAX_SIBLINGS){
             children.push({name:r.name,type:r.type});
           }
         }
