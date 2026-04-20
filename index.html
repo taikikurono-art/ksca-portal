@@ -372,11 +372,8 @@ async function loadRosterForLogin(cls){
   }
 }
 
-function doLogin(name,cls){
+async function doLogin(name,cls){
   session={mode:"user",classId:cls,name:name};
-  // 名簿からtypeを取得（ログイン後にloadDiscountInfoで更新される）
-  var initialType=CLS[cls].hasSoar?"":"hop";
-  children=[{name:name,type:initialType}];
   try{localStorage.setItem("ksca_name",name);localStorage.setItem("ksca_cls",cls);}catch(e){}
   document.getElementById("loginWrap").classList.add("hidden");
   document.getElementById("portalWrap").classList.remove("hidden");
@@ -386,10 +383,22 @@ function doLogin(name,cls){
   var luEl=document.getElementById("lastUpdated");
   if(luEl)luEl.textContent=LAST_UPDATED;
   renderTabs();
-  loadActsFromSheet(4,cls).then(function(){renderContent();});
-  loadUserData();
-  loadDiscountInfo();
-  loadNews(cls);
+
+  // 名簿・割引情報を先に取得してからrenderContent
+  await loadDiscountInfo();
+
+  // 名簿のtypeでchildrenを設定
+  var rosterEntry=rosterCache.filter(function(r){return r.name===name;})[0];
+  var initialType=rosterEntry?rosterEntry.type:(CLS[cls].hasSoar?"hop":"hop");
+  children=[{name:name,type:initialType}];
+
+  // 活動データと出欠データを並行取得
+  await Promise.all([
+    loadActsFromSheet(4,cls),
+    loadUserData(),
+    loadNews(cls)
+  ]);
+  renderContent();
 }
 
 function doAdminLogin(){
@@ -507,12 +516,7 @@ async function loadDiscountInfo(){
         discountMap[r.name]=r.discount||"";
         rosterCache.push(r);
       });
-      // childrenのtypeを名簿から更新
-      children.forEach(function(c){
-        var found=data.filter(function(r){return r.name===c.name;})[0];
-        if(found)c.type=found.type;
-      });
-      renderContent();
+      // childrenのtypeを名簿から更新（doLogin経由の場合はdoLogin側で処理）
     }
   }catch(e){}
 }
