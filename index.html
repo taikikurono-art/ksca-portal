@@ -937,11 +937,7 @@ function renderAttSection(){
 
       // HOP/SOAR選択（金山クラスのみ）
       if(cls.hasSoar){
-        html+='<div style="font-size:11px;color:#888780;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">クラス</div>';
-        html+='<div class="type-row">';
-        html+='<label class="type-option"><input type="radio" name="type_'+idx+'" value="hop" '+(type==="hop"?"checked":"")+'  onchange="updateChildType('+idx+',\'hop\')"><span class="type-label hop-type">HOP（幼〜低学年）</span></label>';
-        html+='<label class="type-option"><input type="radio" name="type_'+idx+'" value="soar" '+(type==="soar"?"checked":"")+' onchange="updateChildType('+idx+',\'soar\')"><span class="type-label soar-type">SOAR（中〜高学年）</span></label>';
-        html+='</div>';
+        html+='<div style="margin-bottom:10px;">'+(type==="hop"?'<span class="tag tag-hop" style="font-size:12px;padding:4px 12px;">HOP（幼〜低学年）</span>':'<span class="tag tag-soar" style="font-size:12px;padding:4px 12px;">SOAR（中〜高学年）</span>')+'</div>';
       }
 
       // 出欠回答
