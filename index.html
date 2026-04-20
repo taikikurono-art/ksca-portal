@@ -512,14 +512,22 @@ function calcPayment(month){
   var breakdown=[];
   var total=0;
 
+  // 保護者参加割引を確認
+  var pKey="parent_"+session.classId+"_"+session.name+"_"+month;
+  var parentAtt=parentStore[pKey];
+  var parentDiscount=(month===5&&parentAtt&&parentAtt.submitted&&parentAtt.attend!=="none")?1000:0;
+
   participatingChildren.forEach(function(c){
     var jumpupDiscount=discountMap[c.name]==="jumpup"?500:0;
-    var discount=siblingDiscount+jumpupDiscount;
+    // 保護者割引は1人目の子どものみに適用
+    var parentD=(participatingChildren.indexOf(c)===0)?parentDiscount:0;
+    var discount=siblingDiscount+jumpupDiscount+parentD;
     var amount=Math.max(0,baseFee-discount);
     total+=amount;
     var discNote=[];
     if(siblingDiscount)discNote.push("兄弟割−500円");
     if(jumpupDiscount)discNote.push("教室割−500円");
+    if(parentD)discNote.push("保護者参加割−1,000円");
     breakdown.push({
       name:c.name,
       type:c.type,
@@ -715,7 +723,7 @@ function renderContent(){
   html+='<div><div class="i-label">集合時間</div><div class="i-val">'+meetTime+'</div></div>';
   html+='<div style="grid-column:1/-1"><div class="i-label">集合・解散場所</div><div class="i-val sm">'+cls.spot+'　<a href="'+cls.mapUrl+'" target="_blank" style="font-size:11px;color:#1D9E75;font-weight:500;text-decoration:none;vertical-align:middle;">📍 地図を見る</a></div></div>';
   html+='<div><div class="i-label">解散時間</div><div class="i-val">'+dissolveTime+'</div></div>';
-  html+='<div><div class="i-label">参加費</div><div class="i-val sm">'+fee+'（兄弟割・教室割あり）</div></div>';
+  html+='<div id="baseFeeRow"><div class="i-label">参加費</div><div class="i-val sm">'+fee+'（兄弟割・教室割あり）</div></div>';
   html+='<div style="grid-column:1/-1"><div class="i-label">交通費</div><div class="i-val sm">'+transport+'</div></div>';
   html+='</div></div></div>';
 
@@ -977,7 +985,7 @@ function renderAttSection(){
 
     if(pSubmitted){
       var pLabel=pAtt.attend==="none"?"子どものみ参加":pAtt.attend==="together"?"保護者も参加（集合から一緒）":"保護者も参加（現地集合）";
-      var pFee=pAtt.attend==="none"?"参加費：6,000円":"参加費：5,000円（−1,000円）";
+      var pFee=pAtt.attend==="none"?"":"参加費から−1,000円が適用されます";
       var doneDiv=document.createElement("div");
       doneDiv.style.cssText="background:#E1F5EE;border-radius:8px;padding:10px 12px;font-size:13px;color:#0F6E56;";
       doneDiv.innerHTML="<div style='font-weight:500;'>✓ "+pLabel+"</div><div style='font-size:12px;margin-top:4px;'>"+pFee+"</div>";
@@ -989,9 +997,9 @@ function renderAttSection(){
       parentCard.appendChild(doneDiv);
     } else {
       var opts=[
-        {val:"none", label:"子どものみ参加", fee:"6,000円", feeColor:"#888780"},
-        {val:"together", label:"保護者も参加（集合から一緒）", fee:"5,000円", feeColor:"#185FA5"},
-        {val:"local", label:"保護者も参加（現地集合）", fee:"5,000円", feeColor:"#185FA5"}
+        {val:"none", label:"子どものみ参加", fee:"", feeColor:"#888780"},
+        {val:"together", label:"保護者も参加（集合から一緒）", fee:"参加費から−1,000円", feeColor:"#1D9E75"},
+        {val:"local", label:"保護者も参加（現地集合）", fee:"参加費から−1,000円", feeColor:"#1D9E75"}
       ];
       var radioGroup=document.createElement("div");
       radioGroup.className="parent-radio-group";
@@ -1068,7 +1076,14 @@ function updatePaymentCard(){
   var card=document.getElementById("paymentCard");
   if(!card)return;
   var payment=calcPayment(currentM);
-  if(!payment){card.innerHTML="";return;}
+  var feeRow=document.getElementById("baseFeeRow");
+  if(!payment){
+    card.innerHTML="";
+    if(feeRow)feeRow.style.display="";
+    return;
+  }
+  // 支払いカードが表示される場合は参加費行を非表示
+  if(feeRow)feeRow.style.display="none";
 
   var html='<div style="background:#f0f8ff;border:1px solid #b5d4f4;border-radius:12px;padding:14px 16px;margin-top:4px;">';
   html+='<div style="font-size:11px;color:#185FA5;font-weight:500;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">💴 今月のお支払い金額</div>';
@@ -1121,6 +1136,7 @@ async function submitParent(pKey){
   if(result&&(result.status==="created"||result.status==="updated")){
     parentStore[pKey].submitted=true;
     renderAttSection();
+    updatePaymentCard();
   } else {
     if(si)si.innerHTML='<span style="color:#A32D2D;">保存に失敗しました。</span>';
     if(sb)sb.disabled=false;
