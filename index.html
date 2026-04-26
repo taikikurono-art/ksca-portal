@@ -146,6 +146,43 @@ input:focus{border-color:#1D9E75;}
 .status-maybe{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#FAEEDA;color:#412402;font-weight:500;}
 .empty-msg{text-align:center;padding:2rem;font-size:13px;color:#888780;}
 .reload-btn{font-size:12px;background:none;border:0.5px solid rgba(0,0,0,0.15);border-radius:8px;padding:4px 10px;cursor:pointer;color:#888780;}
+/* 引率者ログイン */
+.group-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+.group-option input[type=radio]{position:absolute;opacity:0;width:0;height:0;}
+.group-label{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 8px;font-size:13px;font-weight:500;border:2px solid #D3D1C7;border-radius:10px;background:#F1EFE8;color:#5F5E5A;cursor:pointer;user-select:none;transition:all .15s;text-align:center;line-height:1.4;}
+.group-option input[type=radio]:checked+.group-label{border-color:#1D9E75!important;background:#1D9E75!important;color:#fff!important;}
+.group-label .gl-tag{font-size:10px;padding:1px 6px;border-radius:10px;margin-bottom:4px;font-weight:500;}
+.gl-hop{background:#FBEAF0;color:#993356;}
+.gl-soar{background:#E6F1FB;color:#0C447C;}
+.group-option input[type=radio]:checked+.group-label .gl-hop,
+.group-option input[type=radio]:checked+.group-label .gl-soar{background:rgba(255,255,255,0.25);color:#fff;}
+/* チェック画面 */
+.checkin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
+.checkin-title{font-size:16px;font-weight:500;}
+.checkin-sub{font-size:12px;color:#888780;}
+.checkin-counter{background:linear-gradient(135deg,#f0faf5,#e8f5f0);border:1px solid #b2ddc9;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.counter-nums{font-size:28px;font-weight:500;color:#1D9E75;line-height:1;}
+.counter-sub{font-size:12px;color:#888780;margin-top:2px;}
+.counter-rate{font-size:14px;font-weight:500;color:#1D9E75;background:#fff;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
+.checkin-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.checkin-item{display:flex;align-items:center;gap:12px;background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:10px;padding:12px 14px;cursor:pointer;user-select:none;transition:all .15s;}
+.checkin-item.is-checked{background:#E1F5EE;border-color:#1D9E75;}
+.checkin-chkbox{width:26px;height:26px;border-radius:6px;border:2px solid #D3D1C7;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.checkin-chkbox.checked{background:#1D9E75;border-color:#1D9E75;}
+.checkin-chkbox.checked::after{content:"";display:block;width:6px;height:11px;border:2.5px solid #fff;border-top:none;border-left:none;transform:rotate(45deg) translate(-1px,-1px);}
+.checkin-name{font-size:15px;font-weight:500;flex:1;}
+.checkin-time{font-size:11px;color:#888780;white-space:nowrap;}
+.checkin-sync{font-size:11px;color:#888780;text-align:center;padding:6px 0;min-height:20px;}
+/* 管理者チェックタブ */
+.checkin-admin-group{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;overflow:hidden;margin-bottom:12px;}
+.checkin-admin-group-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f9f9f7;border-bottom:0.5px solid rgba(0,0,0,0.08);}
+.checkin-admin-group-title{font-size:14px;font-weight:500;}
+.checkin-admin-progress{font-size:12px;font-weight:500;padding:2px 10px;border-radius:20px;background:#E1F5EE;color:#0F6E56;}
+.checkin-admin-row{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:0.5px solid rgba(0,0,0,0.06);font-size:13px;}
+.checkin-admin-row:last-child{border-bottom:none;}
+.ca-name{font-weight:500;}
+.ca-status-yes{font-size:11px;padding:2px 8px;border-radius:20px;background:#E1F5EE;color:#085041;font-weight:500;}
+.ca-status-no{font-size:11px;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#888780;font-weight:500;}
 </style>
 </head>
 <body>
@@ -184,6 +221,7 @@ input:focus{border-color:#1D9E75;}
     <button class="login-btn" id="loginBtn">次へ</button>
     <div class="login-err hidden" id="loginErr">パスワードが正しくありません</div>
     <div class="admin-link" id="showAdminLoginLink">管理者ログイン</div>
+    <div class="admin-link" id="showStaffLoginLink" style="margin-top:2px;color:#1D9E75;">引率者ログイン</div>
   </div>
 </div>
 
@@ -236,6 +274,75 @@ input:focus{border-color:#1D9E75;}
   <div class="saving-indicator" id="adminStatus"></div>
 </div>
 
+<!-- 引率者ログイン画面 -->
+<div id="staffLoginWrap" class="login-wrap hidden">
+  <div class="login-card">
+    <div class="logo-mark">
+      <div class="lt">KSCA</div>
+      <p>引率者ログイン</p>
+    </div>
+    <!-- Step1: クラス選択 -->
+    <div id="staffStep1">
+      <div class="field-wrap">
+        <span class="f-label">担当クラスを選択してください</span>
+        <div class="cls-row">
+          <label class="cls-option">
+            <input type="radio" name="staffCls" value="kanayama" checked>
+            <span class="cls-label">金山クラス（日）</span>
+          </label>
+          <label class="cls-option">
+            <input type="radio" name="staffCls" value="ozone">
+            <span class="cls-label">大曽根クラス（土）</span>
+          </label>
+        </div>
+      </div>
+      <button class="login-btn" id="staffClsNextBtn">次へ</button>
+      <div class="login-err hidden" id="staffLoginErr"></div>
+    </div>
+    <!-- Step2: グループ選択 -->
+    <div id="staffStep2" class="hidden">
+      <div class="field-wrap">
+        <span class="f-label">担当グループを選択してください</span>
+        <div class="group-grid" id="staffGroupGrid"></div>
+        <div style="font-size:11px;color:#888780;margin-top:6px;">※ 参加登録済みの子どもが表示されます</div>
+      </div>
+      <div class="login-err hidden" id="staffGroupErr">グループを選択してください</div>
+      <button class="login-btn" id="staffGroupLoginBtn">この担当でログイン</button>
+      <div style="text-align:center;margin-top:10px;">
+        <button id="staffBackBtn" style="font-size:12px;background:none;border:none;color:#888780;cursor:pointer;text-decoration:underline;">← クラス選択に戻る</button>
+      </div>
+    </div>
+    <div class="admin-link" id="showUserFromStaffLink" style="margin-top:8px;">保護者ログインに戻る</div>
+  </div>
+</div>
+
+<!-- 当日出欠チェック画面 -->
+<div id="staffWrap" class="hidden">
+  <div class="checkin-header">
+    <div>
+      <div class="checkin-title">当日出欠チェック</div>
+      <div class="checkin-sub" id="staffLabel"></div>
+    </div>
+    <button class="logout-btn" id="staffLogoutBtn">ログアウト</button>
+  </div>
+  <div class="checkin-counter">
+    <div>
+      <div class="counter-nums">
+        <span id="checkinCount">0</span>
+        <span style="font-size:16px;color:#888780;"> / </span>
+        <span id="checkinTotal">0</span>
+        <span style="font-size:14px;color:#888780;"> 人</span>
+      </div>
+      <div class="counter-sub">来ています</div>
+    </div>
+    <div class="counter-rate" id="checkinRate">0%</div>
+  </div>
+  <div class="checkin-list" id="checkinList">
+    <div style="text-align:center;padding:2rem;font-size:13px;color:#888780;">読み込み中...</div>
+  </div>
+  <div class="checkin-sync" id="checkinSync"></div>
+</div>
+
 </div>
 <script>
 function normalizeName(val){
@@ -244,7 +351,7 @@ function normalizeName(val){
 var LAST_UPDATED="2026年4月20日";
 var PAYPAL_URL="https://paypal.me/educare0713?locale.x=ja_JP&country.x=JP";
 var GAS_URL="https://script.google.com/macros/s/AKfycby3ldBnzepQBPSuXQXuMMrzH6kaA_aG4ZaxL0fnMwjasjmPQL1xNEuCacBOKTQNUQrH/exec";
-var PW={kanayama:"ksca2026",ozone:"ozone2026",admin:"ksca_admin"};
+var PW={kanayama:"ksca2026",ozone:"ozone2026",admin:"ksca_admin",staff:"ksca_staff"};
 var CLS={
   kanayama:{label:"金山クラス（日）",spot:"JR金山駅 大型ビジョン前",time:"08:45",end:"16:00",hasSoar:true,
     mapUrl:"https://maps.google.com/maps?q=JR金山駅+大型ビジョン前&ll=35.1433,136.9263&z=17"},
@@ -417,7 +524,10 @@ function doLogout(){
   document.getElementById("pwInput").value="";
   document.getElementById("adminPwInput").value="";
   attStore={};children=[];openBlocks={};
-  ["portalWrap","adminWrap"].forEach(function(id){document.getElementById(id).classList.add("hidden");});
+  stopCheckinPolling();
+  ["portalWrap","adminWrap","staffWrap","staffLoginWrap"].forEach(function(id){
+    document.getElementById(id).classList.add("hidden");
+  });
   document.getElementById("loginWrap").classList.remove("hidden");
 }
 
@@ -1248,7 +1358,7 @@ async function gasGetRoster(){
 
 var adminTab="answered";
 
-function setAdminTab(t){adminTab=t;renderAdmin();}
+function setAdminTab(t){adminTab=t;if(t==="checkin"){renderAdmin();loadAdminCheckinData();}else{renderAdmin();}}
 function renderAdmin(){
   var fDiv=document.getElementById("adminFilter");
   var btns='<span style="font-size:12px;color:#888780;padding:5px 0;">月を選択：</span>';
@@ -1299,8 +1409,17 @@ function renderAdmin(){
     t3.textContent="検討中（"+maybe+"）";
     t3.onclick=function(){setAdminTab("maybe");};
     tabRow.appendChild(t3);
+    var t4=document.createElement("button");
+    t4.className="filter-btn"+(adminTab==="checkin"?" active":"");
+    t4.textContent="📍 当日チェック";
+    t4.onclick=function(){setAdminTab("checkin");};
+    tabRow.appendChild(t4);
   }
 
+  if(adminTab==="checkin"){
+    loadAdminCheckinData();
+    return;
+  }
   var tableEl=document.getElementById("adminTable");
   var rows="";
   var thead="";
@@ -1378,7 +1497,245 @@ async function gasGetRoster(){
 
 var adminTab="answered";
 
-// ボタンのイベントをDOMContentLoaded後に設定
+// =============================================================
+// 引率者ログイン
+// =============================================================
+var staffSession={classId:"",month:4,group:"",groupType:""};
+var checkinData=[];
+var checkinPollingTimer=null;
+
+function showStaffStep(step){
+  document.getElementById("staffStep1").classList.toggle("hidden",step!==1);
+  document.getElementById("staffStep2").classList.toggle("hidden",step!==2);
+  document.getElementById("staffGroupErr").classList.add("hidden");
+  var errEl=document.getElementById("staffLoginErr");
+  if(errEl)errEl.classList.add("hidden");
+}
+
+async function handleStaffClsNext(){
+  var cls=document.querySelector('input[name="staffCls"]:checked');
+  if(!cls)return;
+  staffSession.classId=cls.value;
+  var today=new Date();
+  var m=today.getMonth()+1;
+  var validMonths=[4,5,6,7,9,10,11,12,1,2,3];
+  staffSession.month=validMonths.indexOf(m)>=0?m:4;
+
+  var btn=document.getElementById("staffClsNextBtn");
+  btn.disabled=true;btn.textContent="読み込み中...";
+  var groups=await gasGetGroups(staffSession.classId,staffSession.month);
+  btn.disabled=false;btn.textContent="次へ";
+
+  var errEl=document.getElementById("staffLoginErr");
+  if(!groups||!groups.length){
+    if(errEl){errEl.textContent="参加者が見つかりません。出欠回答とグループ設定を確認してください。";errEl.classList.remove("hidden");}
+    return;
+  }
+  if(errEl)errEl.classList.add("hidden");
+
+  var grid=document.getElementById("staffGroupGrid");
+  grid.innerHTML="";
+  groups.forEach(function(g,i){
+    var label=document.createElement("label");
+    label.className="group-option";
+    var tagCls=g.type==="soar"?"gl-soar":"gl-hop";
+    var tagTxt=g.type==="soar"?"SOAR":"HOP";
+    label.innerHTML=
+      '<input type="radio" name="staffGroup" value="'+g.name+'" data-type="'+(g.type||"hop")+'"'+(i===0?" checked":"")+'>'+
+      '<span class="group-label">'+
+        '<span class="gl-tag '+tagCls+'">'+tagTxt+'</span>'+
+        g.name+
+        '<span style="font-size:11px;opacity:.8;margin-top:2px;">'+g.count+'人</span>'+
+      '</span>';
+    grid.appendChild(label);
+  });
+  showStaffStep(2);
+}
+
+function handleStaffGroupLogin(){
+  var sel=document.querySelector('input[name="staffGroup"]:checked');
+  if(!sel){document.getElementById("staffGroupErr").classList.remove("hidden");return;}
+  staffSession.group=sel.value;
+  staffSession.groupType=sel.dataset.type||"";
+  document.getElementById("staffLoginWrap").classList.add("hidden");
+  document.getElementById("staffWrap").classList.remove("hidden");
+  var clsLabel=CLS[staffSession.classId]?CLS[staffSession.classId].label:staffSession.classId;
+  document.getElementById("staffLabel").textContent=clsLabel+"　"+staffSession.group;
+  loadCheckinData();
+  startCheckinPolling();
+}
+
+// =============================================================
+// チェック画面
+// =============================================================
+async function gasGetGroups(classId,month){
+  try{
+    var params=new URLSearchParams({action:"get_groups",classId:classId,month:month});
+    var res=await fetch(GAS_URL+"?"+params.toString(),{redirect:"follow"});
+    return JSON.parse(await res.text());
+  }catch(e){return[];}
+}
+
+async function gasGetCheckin(classId,month,group){
+  try{
+    var params=new URLSearchParams({action:"get_checkin",classId:classId,month:month});
+    if(group)params.append("group",group);
+    var res=await fetch(GAS_URL+"?"+params.toString(),{redirect:"follow"});
+    return JSON.parse(await res.text());
+  }catch(e){return[];}
+}
+
+async function gasPostCheckin(name,classId,month,group,checked){
+  try{
+    var params=new URLSearchParams({action:"checkin",name:name,classId:classId,month:month,group:group,checked:checked});
+    var res=await fetch(GAS_URL+"?"+params.toString(),{redirect:"follow"});
+    return JSON.parse(await res.text());
+  }catch(e){return null;}
+}
+
+async function loadCheckinData(){
+  var list=document.getElementById("checkinList");
+  if(list)list.innerHTML='<div style="text-align:center;padding:2rem;font-size:13px;color:#888780;">読み込み中...</div>';
+  var data=await gasGetCheckin(staffSession.classId,staffSession.month,staffSession.group);
+  if(!data||!Array.isArray(data)){
+    if(list)list.innerHTML='<div style="text-align:center;padding:2rem;font-size:13px;color:#A32D2D;">読み込みに失敗しました</div>';
+    return;
+  }
+  checkinData=data;
+  renderCheckinList();
+}
+
+function renderCheckinList(){
+  var list=document.getElementById("checkinList");
+  var countEl=document.getElementById("checkinCount");
+  var totalEl=document.getElementById("checkinTotal");
+  var rateEl=document.getElementById("checkinRate");
+  if(!list)return;
+  var chk=checkinData.filter(function(c){return c.checked;}).length;
+  var tot=checkinData.length;
+  var pct=tot>0?Math.round(chk/tot*100):0;
+  if(countEl)countEl.textContent=chk;
+  if(totalEl)totalEl.textContent=tot;
+  if(rateEl)rateEl.textContent=pct+"%";
+  if(!tot){list.innerHTML='<div style="text-align:center;padding:2rem;font-size:13px;color:#888780;">このグループに参加者がいません</div>';return;}
+  list.innerHTML="";
+  checkinData.forEach(function(child,idx){
+    var item=document.createElement("div");
+    item.className="checkin-item"+(child.checked?" is-checked":"");
+    item.innerHTML=
+      '<div class="checkin-chkbox'+(child.checked?" checked":"")+'"></div>'+
+      '<div class="checkin-name">'+child.name+'</div>'+
+      (child.checkedAt?'<div class="checkin-time">'+child.checkedAt+'</div>':'<div class="checkin-time" style="color:#D3D1C7;">未着</div>');
+    item.onclick=(function(i){return function(){toggleCheckin(i);};})(idx);
+    list.appendChild(item);
+  });
+}
+
+async function toggleCheckin(idx){
+  var child=checkinData[idx];
+  if(!child)return;
+  child.checked=!child.checked;
+  if(child.checked){
+    var now=new Date();
+    child.checkedAt=(now.getMonth()+1)+"/"+now.getDate()+" "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
+  }else{child.checkedAt=null;}
+  renderCheckinList();
+  var sync=document.getElementById("checkinSync");
+  if(sync)sync.innerHTML='<span style="color:#1D9E75;">保存中...</span>';
+  var result=await gasPostCheckin(child.name,staffSession.classId,staffSession.month,staffSession.group,child.checked);
+  if(sync){
+    if(result&&result.success){
+      var t=new Date();
+      sync.textContent=(t.getMonth()+1)+"/"+t.getDate()+" "+String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0")+" に同期しました";
+    }else{
+      sync.innerHTML='<span style="color:#A32D2D;">保存に失敗しました。再度タップしてください。</span>';
+      child.checked=!child.checked;child.checkedAt=null;
+      renderCheckinList();
+    }
+  }
+}
+
+function startCheckinPolling(){
+  stopCheckinPolling();
+  checkinPollingTimer=setInterval(async function(){
+    var wrap=document.getElementById("staffWrap");
+    if(!wrap||wrap.classList.contains("hidden"))return;
+    var fresh=await gasGetCheckin(staffSession.classId,staffSession.month,staffSession.group);
+    if(!fresh||!Array.isArray(fresh))return;
+    checkinData=fresh;
+    renderCheckinList();
+    var sync=document.getElementById("checkinSync");
+    if(sync){var t=new Date();sync.textContent="最終同期: "+String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");}
+  },30000);
+}
+
+function stopCheckinPolling(){
+  if(checkinPollingTimer){clearInterval(checkinPollingTimer);checkinPollingTimer=null;}
+}
+
+// =============================================================
+// 管理者画面 - 当日チェックタブ
+// =============================================================
+var adminCheckinData=[];
+var adminFilterCls="";
+
+async function loadAdminCheckinData(){
+  var st=document.getElementById("adminStatus");
+  if(st)st.innerHTML='<span class="spin"></span>読み込み中...';
+  var data=await gasGetCheckin(adminFilterCls,adminFilterM,"");
+  adminCheckinData=data||[];
+  if(st)st.innerHTML="";
+  renderAdminCheckin();
+}
+
+function renderAdminCheckin(){
+  var allChk=adminCheckinData.filter(function(c){return c.checked;}).length;
+  var allTot=adminCheckinData.length;
+  document.getElementById("adminSummary").innerHTML=
+    '<div class="sum-card"><div class="sum-num" style="color:#1D9E75;">'+allChk+'</div><div class="sum-label">来た</div></div>'+
+    '<div class="sum-card"><div class="sum-num" style="color:#888780;">'+(allTot-allChk)+'</div><div class="sum-label">未着</div></div>'+
+    '<div class="sum-card"><div class="sum-num">'+allTot+'</div><div class="sum-label">参加予定</div></div>';
+
+  var clsFilter=
+    '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">'+
+    '<span style="font-size:12px;color:#888780;">クラス：</span>'+
+    '<button class="filter-btn'+(adminFilterCls===""?" active":"")+'" onclick="adminFilterCls=\'\';loadAdminCheckinData()">全クラス</button>'+
+    '<button class="filter-btn'+(adminFilterCls==="kanayama"?" active":"")+'" onclick="adminFilterCls=\'kanayama\';loadAdminCheckinData()">金山</button>'+
+    '<button class="filter-btn'+(adminFilterCls==="ozone"?" active":"")+'" onclick="adminFilterCls=\'ozone\';loadAdminCheckinData()">大曽根</button>'+
+    '</div>';
+
+  var groups={};
+  adminCheckinData.forEach(function(c){
+    var g=c.group||"未割当";
+    if(!groups[g])groups[g]={name:g,type:c.type,checked:0,total:0,members:[]};
+    groups[g].total++;if(c.checked)groups[g].checked++;
+    groups[g].members.push(c);
+  });
+
+  var html=clsFilter;
+  if(!allTot){
+    html+='<div style="text-align:center;padding:2rem;font-size:13px;color:#888780;">参加者データがありません</div>';
+  }else{
+    Object.keys(groups).sort(function(a,b){return a.localeCompare(b,"ja");}).forEach(function(gName){
+      var g=groups[gName];
+      var tagCls=g.type==="soar"?"tag-soar":"tag-hop";
+      var tagTxt=g.type==="soar"?"SOAR":"HOP";
+      html+='<div class="checkin-admin-group">';
+      html+='<div class="checkin-admin-group-header"><div style="display:flex;align-items:center;gap:8px;"><span class="tag '+tagCls+'">'+tagTxt+'</span><span class="checkin-admin-group-title">'+gName+'</span></div>';
+      html+='<span class="checkin-admin-progress">'+g.checked+" / "+g.total+"人</span></div>";
+      g.members.sort(function(a,b){return a.name.localeCompare(b.name,"ja");});
+      g.members.forEach(function(m){
+        html+='<div class="checkin-admin-row'+(m.checked?" done":"")+'">';
+        html+='<span class="ca-name">'+m.name+'</span>';
+        html+=m.checked?'<span class="ca-status-yes">✓ 来た'+(m.checkedAt?" "+m.checkedAt:"")+'</span>':'<span class="ca-status-no">未着</span>';
+        html+='</div>';
+      });
+      html+='</div>';
+    });
+  }
+  var tableCard=document.querySelector("#adminWrap .card");
+  if(tableCard)tableCard.innerHTML='<div style="padding:14px 16px;">'+html+'</div>';
+}
 document.addEventListener("DOMContentLoaded", function(){
   try{ initFromStorage(); }catch(e){}
 
@@ -1412,6 +1769,19 @@ document.addEventListener("DOMContentLoaded", function(){
   bindBtn("logoutBtn", doLogout);
   bindBtn("adminLogoutBtn", doLogout);
   bindBtn("reloadAdminBtn", loadAdminData);
+  bindBtn("showStaffLoginLink", function(){
+    document.getElementById("loginWrap").classList.add("hidden");
+    document.getElementById("staffLoginWrap").classList.remove("hidden");
+    showStaffStep(1);
+  });
+  bindBtn("showUserFromStaffLink", function(){
+    document.getElementById("staffLoginWrap").classList.add("hidden");
+    document.getElementById("loginWrap").classList.remove("hidden");
+  });
+  bindBtn("staffClsNextBtn",    handleStaffClsNext);
+  bindBtn("staffGroupLoginBtn", handleStaffGroupLogin);
+  bindBtn("staffLogoutBtn",     doLogout);
+  bindBtn("staffBackBtn",       function(){ showStaffStep(1); });
   bindKey("pwInput", handleLoginBtn);
   bindKey("adminPwInput", doAdminLogin);
 });
