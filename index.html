@@ -388,6 +388,8 @@ var children=[];
 var currentM=4;
 var attStore={};
 var openBlocks={};
+// KSCA未参加の兄弟姉妹人数（月別）: {month: count}
+var nonKscaSiblings={};
 var adminAllData=[];
 var adminFilterM=4;
 
@@ -667,7 +669,8 @@ async function loadDiscountInfo(){
 function calcPayment(month){
   var act=ACTS[month];
   var clsAct=(act&&act[session.classId])||{};
-  var baseFee=clsAct.fee?parseInt(clsAct.fee):0;
+  var feeStr=clsAct.fee||"";
+  var baseFee=feeStr?parseInt(feeStr.replace(/[^0-9]/g,"")):0;
   if(!baseFee)return null;
 
   // 参加する子どもをカウント
@@ -678,7 +681,10 @@ function calcPayment(month){
     return att&&att.submitted&&att.answer==="yes";
   });
 
-  if(!participatingChildren.length)return null;
+  // KSCA未参加兄弟姉妹
+  var nonKscaCount=nonKscaSiblings[month]||0;
+
+  if(!participatingChildren.length&&!nonKscaCount)return null;
 
   // 5月は保護者参加割引が設定済みの場合のみ適用（未設定でも表示はする）
 
@@ -713,6 +719,19 @@ function calcPayment(month){
       note:discNote.join("・")
     });
   });
+
+  // KSCA未参加兄弟姉妹：1人500円
+  if(nonKscaCount>0){
+    breakdown.push({
+      name:"KSCA未参加の兄弟姉妹 "+nonKscaCount+"名",
+      type:"",
+      base:500,
+      discount:0,
+      amount:500*nonKscaCount,
+      note:"体験参加費 500円×"+nonKscaCount+"名"
+    });
+    total+=500*nonKscaCount;
+  }
 
   return {breakdown:breakdown,total:total};
 }
@@ -1142,8 +1161,22 @@ function renderAttSection(){
   // 兄弟追加ボタン
   html+='<div class="sibling-add-area">';
   var canAdd=children.length<1+MAX_SIBLINGS;
-  html+='<button class="add-sibling-btn" onclick="addSibling()" '+(canAdd?"":"disabled")+'>＋ 兄弟姉妹を追加する</button>';
+  html+='<button class="add-sibling-btn" onclick="addSibling()" '+(canAdd?"":"disabled")+'>＋ 兄弟姉妹を追加する（名簿あり）</button>';
   if(!canAdd){html+='<div style="font-size:12px;color:#888780;text-align:center;margin-top:6px;">最大3名まで追加できます</div>';}
+  html+='</div>';
+
+  // KSCA未参加の兄弟姉妹カウンター
+  var nonKscaNow=nonKscaSiblings[currentM]||0;
+  html+='<div style="margin-top:10px;background:#fff8f0;border:1px solid #f5c89a;border-radius:8px;padding:10px 12px;">';
+  html+='<div style="font-size:12px;color:#BA7517;font-weight:500;margin-bottom:8px;">👦 KSCA未参加の兄弟姉妹の参加</div>';
+  html+='<div style="font-size:12px;color:#5F5E5A;margin-bottom:8px;">名簿にない兄弟姉妹が体験参加する場合は人数を選んでください（500円/名）</div>';
+  html+='<div style="display:flex;align-items:center;gap:10px;">';
+  html+='<button onclick="changeNonKsca(-1)" style="width:32px;height:32px;font-size:18px;border:1px solid #D3D1C7;border-radius:8px;background:#fff;cursor:pointer;line-height:1;">−</button>';
+  html+='<span id="nonKscaCount" style="font-size:16px;font-weight:500;min-width:20px;text-align:center;">'+nonKscaNow+'</span>';
+  html+='<button onclick="changeNonKsca(1)" style="width:32px;height:32px;font-size:18px;border:1px solid #D3D1C7;border-radius:8px;background:#fff;cursor:pointer;line-height:1;">＋</button>';
+  html+='<span style="font-size:12px;color:#888780;">名</span>';
+  if(nonKscaNow>0){html+='<span style="font-size:12px;font-weight:500;color:#BA7517;margin-left:6px;">= ¥'+(500*nonKscaNow).toLocaleString()+'</span>';}
+  html+='</div>';
   html+='</div>';
 
   sec.innerHTML=html;
@@ -1278,6 +1311,14 @@ async function submitAtt(idx){
 
 function resetAtt(key){if(attStore[key])attStore[key].submitted=false;renderContent();}
 
+function changeNonKsca(delta){
+  var cur=nonKscaSiblings[currentM]||0;
+  var next=Math.max(0,cur+delta);
+  nonKscaSiblings[currentM]=next;
+  renderAttSection();
+  try{updatePaymentCard();}catch(e){}
+}
+
 function updatePaymentCard(){
   var card=document.getElementById("paymentCard");
   if(!card)return;
@@ -1296,8 +1337,9 @@ function updatePaymentCard(){
 
   payment.breakdown.forEach(function(b){
     html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);">';
-    html+='<div><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+b.name+'<span style="font-size:11px;color:#888780;margin-left:6px;">'+(b.type==="hop"?"HOP":"SOAR")+'</span></div>';
-    if(b.note){html+='<div style="font-size:11px;color:#1D9E75;">'+b.note+'</div>';}
+    var typeTag=b.type==="hop"?'<span style="font-size:11px;color:#888780;margin-left:6px;">HOP</span>':b.type==="soar"?'<span style="font-size:11px;color:#888780;margin-left:6px;">SOAR</span>':"";
+    html+='<div><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+b.name+typeTag+'</div>';
+    if(b.note){html+='<div style="font-size:11px;color:#BA7517;">'+b.note+'</div>';}
     html+='</div>';
     html+='<div style="font-size:15px;font-weight:500;color:#185FA5;">¥'+b.amount.toLocaleString()+'</div>';
     html+='</div>';
