@@ -878,13 +878,13 @@ function renderTabs(){
     row.appendChild(btn);
     if(mo.m===currentM)activeBtn=btn;
   });
-  // アクティブなタブを中央にスクロール
+  // アクティブなタブが見えるようにスクロール（左に余白を持たせて過去月も見える）
   if(activeBtn){
     var scroll=document.querySelector(".tab-scroll");
     if(scroll){
-      var btnCenter=activeBtn.offsetLeft+activeBtn.offsetWidth/2;
-      var scrollCenter=scroll.offsetWidth/2;
-      scroll.scrollLeft=btnCenter-scrollCenter;
+      // タブの左端から約120px余裕を持たせる（過去月1〜2個分見える）
+      var targetLeft=activeBtn.offsetLeft-120;
+      scroll.scrollLeft=Math.max(0,targetLeft);
     }
   }
 }
