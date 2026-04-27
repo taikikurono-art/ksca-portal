@@ -1460,8 +1460,7 @@ async function renderReview(month){
   html+='<div class="step-title">'+(data.title||"活動の振り返り")+'</div></div>';
   html+='<div class="step-body">';
   // 改行を<br>に変換
-  var msg=data.message.replace(/
-/g,"<br>");
+  var msg=data.message.split("\n").join("<br>");
   html+='<div style="font-size:13px;line-height:1.9;color:#2c2c2a;white-space:pre-wrap;">'+msg+'</div>';
   html+='</div></div>';
 
@@ -1476,7 +1475,7 @@ async function renderReview(month){
     html+='<div style="display:grid;grid-template-columns:'+cols+';gap:8px;">';
     photos.forEach(function(url,i){
       html+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f5f5f0;">';
-      html+='<img src="'+url+'" alt="活動写真'+(i+1)+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'">';
+      html+='<img src="'+url+'" alt="活動写真'+(i+1)+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.remove()">';
       html+='</div>';
     });
     html+='</div>';
@@ -1685,8 +1684,7 @@ async function renderReview(month){
   html+='<div class="step-title">'+(data.title||"活動の振り返り")+'</div></div>';
   html+='<div class="step-body">';
   // 改行を<br>に変換
-  var msg=data.message.replace(/
-/g,"<br>");
+  var msg=data.message.split("\n").join("<br>");
   html+='<div style="font-size:13px;line-height:1.9;color:#2c2c2a;white-space:pre-wrap;">'+msg+'</div>';
   html+='</div></div>';
 
@@ -1701,7 +1699,7 @@ async function renderReview(month){
     html+='<div style="display:grid;grid-template-columns:'+cols+';gap:8px;">';
     photos.forEach(function(url,i){
       html+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f5f5f0;">';
-      html+='<img src="'+url+'" alt="活動写真'+(i+1)+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'">';
+      html+='<img src="'+url+'" alt="活動写真'+(i+1)+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.remove()">';
       html+='</div>';
     });
     html+='</div>';
