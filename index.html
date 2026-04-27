@@ -35,6 +35,8 @@ input:focus{border-color:#1D9E75;}
 .tab-row{display:flex;gap:4px;min-width:max-content;padding-bottom:2px;}
 .tab-btn{padding:6px 12px;font-size:13px;border:0.5px solid rgba(0,0,0,0.12);border-radius:8px;background:#fff;color:#888780;cursor:pointer;white-space:nowrap;}
 .tab-btn.active{background:#1D9E75;color:#fff;border-color:#1D9E75;font-weight:500;}
+.tab-btn.tab-past{color:#B0AEA8;background:#f5f5f0;border-color:rgba(0,0,0,0.08);}
+.tab-btn.tab-past.active{background:#1D9E75;color:#fff;border-color:#1D9E75;}
 .card{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;overflow:hidden;margin-bottom:12px;}
 .step-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:0.5px solid rgba(0,0,0,0.08);}
 .step-num{width:22px;height:22px;border-radius:50%;background:#E1F5EE;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;}
@@ -386,8 +388,6 @@ var children=[];
 var currentM=4;
 var attStore={};
 var openBlocks={};
-// KSCA未参加の兄弟姉妹人数（月別）: {month: count}
-var nonKscaSiblings={};
 var adminAllData=[];
 var adminFilterM=4;
 
@@ -488,7 +488,26 @@ async function doLogin(name,cls){
   document.getElementById("portalWrap").classList.remove("hidden");
   document.getElementById("userLabel").textContent=CLS[cls].label+"　"+name+" さん";
   loginStep="pw";
-  currentM=4;
+  // 現在月または直近の未来月を自動選択
+  (function(){
+    var today=new Date();
+    var monthOrder=[4,5,6,7,9,10,11,12,1,2,3];
+    var dates=DATES[cls]||{};
+    // 今日以降で一番近い活動月を探す
+    var found=null;
+    for(var i=0;i<monthOrder.length;i++){
+      var m=monthOrder[i];
+      var d=dates[m];
+      if(!d)continue;
+      var parts=d.match(/(\d+)年(\d+)月(\d+)日/);
+      if(!parts)continue;
+      var actDate=new Date(parseInt(parts[1]),parseInt(parts[2])-1,parseInt(parts[3]));
+      if(actDate>=today){found=m;break;}
+    }
+    // 全部終わっていたら最後の月
+    if(!found)found=monthOrder[monthOrder.length-1];
+    currentM=found;
+  })();
   var luEl=document.getElementById("lastUpdated");
   if(luEl)luEl.textContent=LAST_UPDATED;
   renderTabs();
@@ -648,9 +667,7 @@ async function loadDiscountInfo(){
 function calcPayment(month){
   var act=ACTS[month];
   var clsAct=(act&&act[session.classId])||{};
-  // "6,500円" → 6500
-  var feeStr=clsAct.fee||"";
-  var baseFee=feeStr?parseInt(feeStr.replace(/[^0-9]/g,"")):0;
+  var baseFee=clsAct.fee?parseInt(clsAct.fee):0;
   if(!baseFee)return null;
 
   // 参加する子どもをカウント
@@ -661,12 +678,11 @@ function calcPayment(month){
     return att&&att.submitted&&att.answer==="yes";
   });
 
-  // KSCA未参加兄弟姉妹
-  var nonKscaCount=nonKscaSiblings[month]||0;
+  if(!participatingChildren.length)return null;
 
-  if(!participatingChildren.length&&!nonKscaCount)return null;
+  // 5月は保護者参加割引が設定済みの場合のみ適用（未設定でも表示はする）
 
-  // 兄弟割引：KSCAメンバー2人以上参加なら全員−500円
+  // 兄弟割引：2人以上参加なら全員−500円
   var siblingDiscount=participatingChildren.length>=2?500:0;
 
   var breakdown=[];
@@ -697,19 +713,6 @@ function calcPayment(month){
       note:discNote.join("・")
     });
   });
-
-  // KSCA未参加兄弟姉妹：1人500円
-  if(nonKscaCount>0){
-    breakdown.push({
-      name:"KSCA未参加の兄弟姉妹 "+nonKscaCount+"名",
-      type:"",
-      base:500,
-      discount:0,
-      amount:500*nonKscaCount,
-      note:"体験参加費 500円×"+nonKscaCount+"名"
-    });
-    total+=500*nonKscaCount;
-  }
 
   return {breakdown:breakdown,total:total};
 }
@@ -819,6 +822,14 @@ function getTabDate(m){
   var match=d.match(/(\d+)月(\d+)/);
   return match?" "+match[1]+"/"+match[2]:"";
 }
+function isMonthPast(m){
+  var d=DATES[session.classId]&&DATES[session.classId][m];
+  if(!d)return false;
+  var parts=d.match(/(\d+)年(\d+)月(\d+)日/);
+  if(!parts)return false;
+  var actDate=new Date(parseInt(parts[1]),parseInt(parts[2])-1,parseInt(parts[3]));
+  return actDate<new Date();
+}
 function renderTabs(){
   var row=document.getElementById("tabRow");row.innerHTML="";
   var allBtn=document.createElement("button");
@@ -826,10 +837,14 @@ function renderTabs(){
   allBtn.textContent="📅 年間日程";
   allBtn.onclick=function(){currentM="all";renderTabs();renderContent();};
   row.appendChild(allBtn);
+  var activeBtn=null;
   MONTHS.forEach(function(mo){
     var btn=document.createElement("button");
-    btn.className="tab-btn"+(mo.m===currentM?" active":"");
-    btn.textContent=mo.e+" "+mo.l+getTabDate(mo.m);
+    var past=isMonthPast(mo.m);
+    btn.className="tab-btn"+(mo.m===currentM?" active":"")+(past?" tab-past":"");
+    // 終了済みは薄いチェックアイコン付き、未来はそのまま
+    var icon=past?"☑ ":"";
+    btn.textContent=icon+mo.e+" "+mo.l+getTabDate(mo.m);
     btn.onclick=(function(m){return function(){
       currentM=m;
       renderTabs();
@@ -842,7 +857,17 @@ function renderTabs(){
       }
     };})(mo.m);
     row.appendChild(btn);
+    if(mo.m===currentM)activeBtn=btn;
   });
+  // アクティブなタブを中央にスクロール
+  if(activeBtn){
+    var scroll=document.querySelector(".tab-scroll");
+    if(scroll){
+      var btnCenter=activeBtn.offsetLeft+activeBtn.offsetWidth/2;
+      var scrollCenter=scroll.offsetWidth/2;
+      scroll.scrollLeft=btnCenter-scrollCenter;
+    }
+  }
 }
 
 function renderSchedule(){
@@ -910,6 +935,11 @@ function renderSchedule(){
 function renderContent(){
   if(currentM==="all"){
     renderSchedule();
+    return;
+  }
+  // 終了済み月は振り返りモード
+  if(isMonthPast(currentM)){
+    renderReview(currentM);
     return;
   }
   var act=ACTS[currentM];
@@ -1112,22 +1142,8 @@ function renderAttSection(){
   // 兄弟追加ボタン
   html+='<div class="sibling-add-area">';
   var canAdd=children.length<1+MAX_SIBLINGS;
-  html+='<button class="add-sibling-btn" onclick="addSibling()" '+(canAdd?"":"disabled")+'>＋ 兄弟姉妹を追加する（名簿あり）</button>';
+  html+='<button class="add-sibling-btn" onclick="addSibling()" '+(canAdd?"":"disabled")+'>＋ 兄弟姉妹を追加する</button>';
   if(!canAdd){html+='<div style="font-size:12px;color:#888780;text-align:center;margin-top:6px;">最大3名まで追加できます</div>';}
-  html+='</div>';
-
-  // KSCA未参加の兄弟姉妹チェックボックス
-  var nonKscaNow=nonKscaSiblings[currentM]||0;
-  html+='<div style="margin-top:10px;background:#fff8f0;border:1px solid #f5c89a;border-radius:8px;padding:10px 12px;">';
-  html+='<div style="font-size:12px;color:#BA7517;font-weight:500;margin-bottom:8px;">👦 KSCA未参加の兄弟姉妹の参加</div>';
-  html+='<div style="font-size:12px;color:#5F5E5A;margin-bottom:8px;">名簿にない兄弟姉妹が体験参加する場合は人数を選んでください（500円/名）</div>';
-  html+='<div style="display:flex;align-items:center;gap:10px;">';
-  html+='<button onclick="changeNonKsca(-1)" style="width:32px;height:32px;font-size:18px;border:1px solid #D3D1C7;border-radius:8px;background:#fff;cursor:pointer;line-height:1;">−</button>';
-  html+='<span id="nonKscaCount" style="font-size:16px;font-weight:500;min-width:20px;text-align:center;">'+nonKscaNow+'</span>';
-  html+='<button onclick="changeNonKsca(1)" style="width:32px;height:32px;font-size:18px;border:1px solid #D3D1C7;border-radius:8px;background:#fff;cursor:pointer;line-height:1;">＋</button>';
-  html+='<span style="font-size:12px;color:#888780;">名</span>';
-  if(nonKscaNow>0){html+='<span style="font-size:12px;font-weight:500;color:#BA7517;margin-left:6px;">= ¥'+(500*nonKscaNow).toLocaleString()+'</span>';}
-  html+='</div>';
   html+='</div>';
 
   sec.innerHTML=html;
@@ -1185,11 +1201,10 @@ function renderAttSection(){
       doneDiv.appendChild(chgBtn);
       parentCard.appendChild(doneDiv);
     } else {
-      var spotName=CLS[session.classId].spot;
       var opts=[
         {val:"none", label:"子どものみ参加", fee:"", feeColor:"#888780"},
-        {val:"together", label:"保護者も参加（"+spotName+"から一緒）", fee:"参加費から−1,000円", feeColor:"#1D9E75"},
-        {val:"local", label:"保護者も参加（現地集合・途中合流）", fee:"参加費から−1,000円", feeColor:"#1D9E75"}
+        {val:"together", label:"保護者も参加（集合から一緒）", fee:"参加費から−1,000円", feeColor:"#1D9E75"},
+        {val:"local", label:"保護者も参加（現地集合）", fee:"参加費から−1,000円", feeColor:"#1D9E75"}
       ];
       var radioGroup=document.createElement("div");
       radioGroup.className="parent-radio-group";
@@ -1263,14 +1278,6 @@ async function submitAtt(idx){
 
 function resetAtt(key){if(attStore[key])attStore[key].submitted=false;renderContent();}
 
-function changeNonKsca(delta){
-  var cur=nonKscaSiblings[currentM]||0;
-  var next=Math.max(0,cur+delta);
-  nonKscaSiblings[currentM]=next;
-  renderAttSection();
-  try{updatePaymentCard();}catch(e){}
-}
-
 function updatePaymentCard(){
   var card=document.getElementById("paymentCard");
   if(!card)return;
@@ -1289,9 +1296,8 @@ function updatePaymentCard(){
 
   payment.breakdown.forEach(function(b){
     html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);">';
-    var typeTag=b.type==="hop"?'<span style="font-size:11px;color:#888780;margin-left:6px;">HOP</span>':b.type==="soar"?'<span style="font-size:11px;color:#888780;margin-left:6px;">SOAR</span>':"";
-    html+='<div><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+b.name+typeTag+'</div>';
-    if(b.note){html+='<div style="font-size:11px;color:#BA7517;">'+b.note+'</div>';}
+    html+='<div><div style="font-size:13px;font-weight:500;color:#2c2c2a;">'+b.name+'<span style="font-size:11px;color:#888780;margin-left:6px;">'+(b.type==="hop"?"HOP":"SOAR")+'</span></div>';
+    if(b.note){html+='<div style="font-size:11px;color:#1D9E75;">'+b.note+'</div>';}
     html+='</div>';
     html+='<div style="font-size:15px;font-weight:500;color:#185FA5;">¥'+b.amount.toLocaleString()+'</div>';
     html+='</div>';
@@ -1327,16 +1333,11 @@ async function submitParent(pKey){
   if(sb)sb.disabled=true;
   if(si)si.innerHTML='<span class="spin"></span>保存中...';
   var attendLabel=p.attend==="none"?"子どものみ参加":p.attend==="together"?"保護者も参加（集合から一緒）":"保護者も参加（現地集合）";
-  // 参加費をGASデータから動的取得
-  var act5=ACTS[5];var clsAct5=(act5&&act5[session.classId])||{};
-  var feeStr5=clsAct5.fee||"";
-  var baseFee5=feeStr5?parseInt(feeStr5.replace(/[^0-9]/g,"")):6000;
-  var discFee5=Math.max(0,baseFee5-1000);
-  var feeNote=p.attend==="none"?String(baseFee5):String(discFee5)+"（保護者参加割−1,000円適用）";
+  var fee=p.attend==="none"?"6000":"5000";
   var result=await gasPost({
     name:session.name,classId:session.classId,classLabel:CLS[session.classId].label,
     type:"parent",month:5,
-    answer:attendLabel,reason:"参加費："+feeNote+"円"
+    answer:attendLabel,reason:"参加費："+fee+"円"
   });
   if(result&&(result.status==="created"||result.status==="updated")){
     parentStore[pKey].submitted=true;
@@ -1401,6 +1402,92 @@ async function gasGetRoster(){
     var res=await fetch(GAS_URL+"?"+params.toString());
     return JSON.parse(await res.text());
   }catch(e){return [];}
+}
+
+// 振り返りデータキャッシュ
+var reviewCache={};
+
+async function gasGetReview(month){
+  if(reviewCache[month])return reviewCache[month];
+  try{
+    var params=new URLSearchParams({action:"review",month:month});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    var data=JSON.parse(await res.text());
+    if(data&&!data.error)reviewCache[month]=data;
+    return data;
+  }catch(e){return null;}
+}
+
+async function renderReview(month){
+  var mo=MONTHS.filter(function(x){return x.m===month;})[0]||{e:"",l:month+"月"};
+  var dateStr=(DATES[session.classId]&&DATES[session.classId][month])||"";
+  var shortDate=dateStr.replace(/\d+年/,"");
+  var content=document.getElementById("content");
+
+  // ローディング表示
+  content.innerHTML=
+    '<div class="card"><div class="step-body" style="text-align:center;padding:2rem;">' +
+    '<div style="font-size:28px;margin-bottom:8px;">'+mo.e+'</div>' +
+    '<div style="font-size:14px;font-weight:500;color:#2c2c2a;">'+mo.l+' 振り返り</div>' +
+    '<div style="font-size:13px;color:#888780;margin-top:6px;">読み込み中...</div>' +
+    '</div></div>';
+
+  var data=await gasGetReview(month);
+
+  var html="";
+
+  // ヘッダーバナー（終了バッジ）
+  html+='<div style="background:linear-gradient(135deg,#f9f9f7,#f0ede6);border:1px solid #D3D1C7;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">';
+  html+='<div style="font-size:32px;">'+mo.e+'</div>';
+  html+='<div>';
+  html+='<div style="font-size:15px;font-weight:500;color:#2c2c2a;">'+mo.l+' の活動</div>';
+  if(shortDate)html+='<div style="font-size:12px;color:#888780;margin-top:2px;">'+shortDate+' 開催　<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#888780;font-weight:500;">終了</span></div>';
+  html+='</div></div>';
+
+  if(!data||data.error||!data.message){
+    // データなし
+    html+='<div class="card"><div class="step-body" style="text-align:center;padding:2rem;">';
+    html+='<div style="font-size:24px;margin-bottom:8px;">📝</div>';
+    html+='<div style="font-size:14px;color:#888780;">振り返りメッセージを準備中です</div>';
+    html+='</div></div>';
+    content.innerHTML=html;
+    return;
+  }
+
+  // メッセージカード
+  html+='<div class="card">';
+  html+='<div class="step-header"><div class="step-num" style="background:#FFF3E0;color:#E65100;">💌</div>';
+  html+='<div class="step-title">'+(data.title||"活動の振り返り")+'</div></div>';
+  html+='<div class="step-body">';
+  // 改行を<br>に変換
+  var msg=data.message.replace(/
+/g,"<br>");
+  html+='<div style="font-size:13px;line-height:1.9;color:#2c2c2a;white-space:pre-wrap;">'+msg+'</div>';
+  html+='</div></div>';
+
+  // 写真グリッド
+  var photos=(data.photos||[]).filter(function(p){return p&&p.trim();});
+  if(photos.length>0){
+    html+='<div class="card">';
+    html+='<div class="step-header"><div class="step-num" style="background:#E8F5E9;color:#2E7D32;">📷</div>';
+    html+='<div class="step-title">活動の様子</div></div>';
+    html+='<div class="step-body" style="padding:12px;">';
+    var cols=photos.length===1?"1fr":photos.length===2?"1fr 1fr":"1fr 1fr";
+    html+='<div style="display:grid;grid-template-columns:'+cols+';gap:8px;">';
+    photos.forEach(function(url,i){
+      html+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f5f5f0;">';
+      html+='<img src="'+url+'" alt="活動写真'+(i+1)+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'">';
+      html+='</div>';
+    });
+    html+='</div>';
+    // 3枚目・4枚目は2行目に
+    if(photos.length>=3){
+      // すでに上でグリッドに入っているのでOK（CSSグリッドが自動折り返し）
+    }
+    html+='</div></div>';
+  }
+
+  content.innerHTML=html;
 }
 
 var adminTab="answered";
@@ -1540,6 +1627,92 @@ async function gasGetRoster(){
     var res=await fetch(GAS_URL+"?"+params.toString());
     return JSON.parse(await res.text());
   }catch(e){return [];}
+}
+
+// 振り返りデータキャッシュ
+var reviewCache={};
+
+async function gasGetReview(month){
+  if(reviewCache[month])return reviewCache[month];
+  try{
+    var params=new URLSearchParams({action:"review",month:month});
+    var res=await fetch(GAS_URL+"?"+params.toString());
+    var data=JSON.parse(await res.text());
+    if(data&&!data.error)reviewCache[month]=data;
+    return data;
+  }catch(e){return null;}
+}
+
+async function renderReview(month){
+  var mo=MONTHS.filter(function(x){return x.m===month;})[0]||{e:"",l:month+"月"};
+  var dateStr=(DATES[session.classId]&&DATES[session.classId][month])||"";
+  var shortDate=dateStr.replace(/\d+年/,"");
+  var content=document.getElementById("content");
+
+  // ローディング表示
+  content.innerHTML=
+    '<div class="card"><div class="step-body" style="text-align:center;padding:2rem;">' +
+    '<div style="font-size:28px;margin-bottom:8px;">'+mo.e+'</div>' +
+    '<div style="font-size:14px;font-weight:500;color:#2c2c2a;">'+mo.l+' 振り返り</div>' +
+    '<div style="font-size:13px;color:#888780;margin-top:6px;">読み込み中...</div>' +
+    '</div></div>';
+
+  var data=await gasGetReview(month);
+
+  var html="";
+
+  // ヘッダーバナー（終了バッジ）
+  html+='<div style="background:linear-gradient(135deg,#f9f9f7,#f0ede6);border:1px solid #D3D1C7;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">';
+  html+='<div style="font-size:32px;">'+mo.e+'</div>';
+  html+='<div>';
+  html+='<div style="font-size:15px;font-weight:500;color:#2c2c2a;">'+mo.l+' の活動</div>';
+  if(shortDate)html+='<div style="font-size:12px;color:#888780;margin-top:2px;">'+shortDate+' 開催　<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#888780;font-weight:500;">終了</span></div>';
+  html+='</div></div>';
+
+  if(!data||data.error||!data.message){
+    // データなし
+    html+='<div class="card"><div class="step-body" style="text-align:center;padding:2rem;">';
+    html+='<div style="font-size:24px;margin-bottom:8px;">📝</div>';
+    html+='<div style="font-size:14px;color:#888780;">振り返りメッセージを準備中です</div>';
+    html+='</div></div>';
+    content.innerHTML=html;
+    return;
+  }
+
+  // メッセージカード
+  html+='<div class="card">';
+  html+='<div class="step-header"><div class="step-num" style="background:#FFF3E0;color:#E65100;">💌</div>';
+  html+='<div class="step-title">'+(data.title||"活動の振り返り")+'</div></div>';
+  html+='<div class="step-body">';
+  // 改行を<br>に変換
+  var msg=data.message.replace(/
+/g,"<br>");
+  html+='<div style="font-size:13px;line-height:1.9;color:#2c2c2a;white-space:pre-wrap;">'+msg+'</div>';
+  html+='</div></div>';
+
+  // 写真グリッド
+  var photos=(data.photos||[]).filter(function(p){return p&&p.trim();});
+  if(photos.length>0){
+    html+='<div class="card">';
+    html+='<div class="step-header"><div class="step-num" style="background:#E8F5E9;color:#2E7D32;">📷</div>';
+    html+='<div class="step-title">活動の様子</div></div>';
+    html+='<div class="step-body" style="padding:12px;">';
+    var cols=photos.length===1?"1fr":photos.length===2?"1fr 1fr":"1fr 1fr";
+    html+='<div style="display:grid;grid-template-columns:'+cols+';gap:8px;">';
+    photos.forEach(function(url,i){
+      html+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f5f5f0;">';
+      html+='<img src="'+url+'" alt="活動写真'+(i+1)+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'">';
+      html+='</div>';
+    });
+    html+='</div>';
+    // 3枚目・4枚目は2行目に
+    if(photos.length>=3){
+      // すでに上でグリッドに入っているのでOK（CSSグリッドが自動折り返し）
+    }
+    html+='</div></div>';
+  }
+
+  content.innerHTML=html;
 }
 
 var adminTab="answered";
